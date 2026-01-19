@@ -43,7 +43,7 @@ OneRule takes security seriously:
 
 | Login Screen | Vault (Home) | Settings |
 | :---: | :---: | :---: |
-| *(Add Screenshot Here)* | *(Add Screenshot Here)* | *(Add Screenshot Here)* |
+
 
 ## 🏁 Installation & Running
 
