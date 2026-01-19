@@ -68,10 +68,15 @@ class _LoginScreenState extends State<LoginScreen> {
         isFirstTime: _isFirstTime,
         provider: provider,
       );
+
+      // GÜVENLİK: Giriş başarılı, PIN'i hemen temizle
+      _pinController.clear();
+
       _goToHome();
     } on AuthException catch (e) {
       setState(() {
         _errorMessage = e.message;
+        // Hata durumunda da temizle
         _pinController.clear();
       });
     }

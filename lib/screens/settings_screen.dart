@@ -31,11 +31,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool enabled = await _authFacade.isBiometricEnabled();
     bool available = await _authFacade.isBiometricsAvailable();
 
-    // Cihaz desteklemiyorsa özelliği zorla kapat
-    if (!available) {
-      enabled = false;
-      await _authFacade.setBiometricEnabled(false);
-    }
+    // GÜNCELLEME: Cihaz desteklemiyorsa veritabanındaki ayarı ARTIK DEĞİŞTİRMİYORUZ.
+    // Böylece kullanıcı telefon değiştirirse tercihi (true/false) korunur.
+    // UI tarafında switch zaten pasif (disabled) olacak.
 
     if (mounted) {
       setState(() {
@@ -45,7 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // --- DİALOG FONKSİYONLARI (AYNI) ---
+  // --- DİALOG FONKSİYONLARI ---
   void _showVerifyCurrentPinDialog() {
     final verifyController = TextEditingController();
     final loc = AppLocalizations.of(context)!;
@@ -74,6 +72,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () async {
                 bool isValid =
                     await _authFacade.verifyMasterPin(verifyController.text);
+
+                // GÜVENLİK: İşlem biter bitmez controller'ı temizle
+                verifyController.clear();
+
                 if (isValid && mounted) {
                   Navigator.pop(context);
                   _showSetNewPinDialog();
@@ -125,12 +127,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             newPin: newPin,
                             provider: provider,
                           );
+
+                          // GÜVENLİK: PIN değişti, belleği temizle
+                          newPinController.clear();
+
                           if (mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text(loc.pinChangeSuccess)));
                           }
                         } on AuthException catch (_) {
+                          // Hata durumunda da temizle
+                          newPinController.clear();
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                                 content: Text(loc.pinChangeFailed),
@@ -173,12 +181,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             context: context,
                             panicPin: panicController.text,
                           );
+
+                          // GÜVENLİK: Panik PIN'i bellekte tutma
+                          panicController.clear();
+
                           if (mounted) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text(loc.panicPinSet)));
                           }
                         } on AuthException catch (e) {
+                          panicController.clear();
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                                 content: Text(e.message),
@@ -209,7 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           const SizedBox(height: 20),
 
-          // --- DİL SEÇİMİ (KAYDIRILABİLİR YAPILDI) ---
+          // --- DİL SEÇİMİ ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
@@ -221,7 +234,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, color: Colors.grey)),
                 ),
-                // BURASI DEĞİŞTİ: SingleChildScrollView eklendi
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SegmentedButton<LanguageMode>(
@@ -319,18 +331,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: _showVerifyCurrentPinDialog,
           ),
 
-          // --- BİYOMETRİK GİRİŞ (DÜZELTİLDİ) ---
+          // --- BİYOMETRİK GİRİŞ ---
           SwitchListTile(
             secondary: Icon(Icons.fingerprint,
-                // Donanım yoksa ikon da gri olsun
                 color: _hardwareAvailable ? Colors.teal : Colors.grey),
             title: Text(loc.biometricLogin),
-            // Donanım yoksa "Cihazda Yok" yazsın
             subtitle: Text(_hardwareAvailable
                 ? loc.biometricAvailable
                 : loc.biometricUnavailable),
             value: _biometricEnabled,
-            // Donanım yoksa onChanged NULL olur (yani tıklanmaz)
+            // Donanım yoksa (available=false) onChanged NULL olur -> Tıklanamaz.
+            // Ama yukarıdaki 'value' sayesinde kullanıcının tercihi (açıksa) açık görünür.
             onChanged: _hardwareAvailable
                 ? (val) async {
                     await _authFacade.setBiometricEnabled(val);

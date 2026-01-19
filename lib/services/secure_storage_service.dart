@@ -10,7 +10,13 @@ class SecureStorageService {
   factory SecureStorageService() => _instance;
   SecureStorageService._internal();
 
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  // GÜNCELLEME: Android için EncryptedSharedPreferences aktif edildi
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+  );
+
   static const String _keyBiometricEnabled = 'biometricEnabled';
   static const String _keyHiveKey = 'hiveEncryptionKey';
   static const String _keyMasterPin = 'masterPin';
@@ -102,12 +108,11 @@ class SecureStorageService {
   }
 
   // Yeni PIN kaydet
-  Future<void> setMasterPin(String newPin,
-      {List<int>? derivedHiveKey}) async {
+  Future<void> setMasterPin(String newPin, {List<int>? derivedHiveKey}) async {
     await _storeMasterPinHash(newPin);
 
-    final key = derivedHiveKey ??
-        await deriveHiveKeyFromPin(newPin, rotateSalt: true);
+    final key =
+        derivedHiveKey ?? await deriveHiveKeyFromPin(newPin, rotateSalt: true);
     setSessionKey(key);
   }
 
