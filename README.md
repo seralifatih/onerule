@@ -41,8 +41,11 @@ OneRule takes security seriously:
 
 ## 📸 Screenshots
 
-| Login Screen | Vault (Home) | Settings |
+## 📸 Screenshots
+
+| Vault (Home) | Settings | Generate Password
 | :---: | :---: | :---: |
+| <img src="assets/screenshots/2.jpeg" width="200" /> | <img src="assets/screenshots/1.jpeg" width="200" /> | <img src="assets/screenshots/5.jpeg" width="200" /> |
 
 
 ## 🏁 Installation & Running

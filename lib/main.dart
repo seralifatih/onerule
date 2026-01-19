@@ -18,28 +18,25 @@ import 'services/app_facade.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. KRİTİK: Hive'ı Başlat (Veri kaybını önler)
   await Hive.initFlutter();
-
-  // 2. Adapter'ı Kaydet
   Hive.registerAdapter(PasswordModelAdapter());
 
-  // --- EKRAN GÜVENLİĞİ (Sadece Mobil) ---
-  //if (Platform.isAndroid || Platform.isIOS) {
-  // Screenshot engelleme
-  //await ScreenProtector.preventScreenshotOn();
+  // --- EKRAN GÜVENLİĞİ (TEKRAR AKTİF) ---
+  if (Platform.isAndroid || Platform.isIOS) {
+    // Screenshot engelleme
+    await ScreenProtector.preventScreenshotOn();
 
-  // App switcher blur + ekran kaydı koruması
-  //await ScreenProtector.protectDataLeakageOn();
-  //await ScreenProtector.protectDataLeakageWithBlur();
+    //App switcher blur + ekran kaydı koruması
+    await ScreenProtector.protectDataLeakageOn();
+    await ScreenProtector.protectDataLeakageWithBlur();
 
-  // iOS için ekran kaydı dinleyicisi
-  //ScreenProtector.addListener(() {}, (isCaptured) {
-  //if (isCaptured) {
-  //ScreenProtector.protectDataLeakageWithBlur();
-  //}
-  //});
-  //}
+    // iOS için ekran kaydı dinleyicisi
+    ScreenProtector.addListener(() {}, (isCaptured) {
+      if (isCaptured) {
+        ScreenProtector.protectDataLeakageWithBlur();
+      }
+    });
+  }
   // --------------------------------------
 
   runApp(

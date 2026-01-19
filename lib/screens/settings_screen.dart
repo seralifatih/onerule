@@ -255,7 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       ButtonSegment(
                         value: LanguageMode.de,
-                        label: Text(loc.germanShort),
+                        label: const Text("Deutsch"),
                         icon: const Text("🇩🇪"),
                       ),
                     ],
