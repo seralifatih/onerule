@@ -246,9 +246,9 @@ class LockFacade {
     if (Platform.isAndroid || Platform.isIOS) {
       if (state == AppLifecycleState.paused ||
           state == AppLifecycleState.inactive) {
-        ScreenProtector.protectDataLeakageWithBlur();
+        //ScreenProtector.protectDataLeakageWithBlur();
       } else if (state == AppLifecycleState.resumed) {
-        ScreenProtector.protectDataLeakageWithBlurOff();
+        //ScreenProtector.protectDataLeakageWithBlurOff();
       }
     }
   }

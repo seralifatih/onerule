@@ -18,25 +18,28 @@ import 'services/app_facade.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 1. KRİTİK: Hive'ı Başlat (Veri kaybını önler)
   await Hive.initFlutter();
+
+  // 2. Adapter'ı Kaydet
   Hive.registerAdapter(PasswordModelAdapter());
 
   // --- EKRAN GÜVENLİĞİ (Sadece Mobil) ---
-  if (Platform.isAndroid || Platform.isIOS) {
-    // Screenshot engelleme
-    await ScreenProtector.preventScreenshotOn();
+  //if (Platform.isAndroid || Platform.isIOS) {
+  // Screenshot engelleme
+  //await ScreenProtector.preventScreenshotOn();
 
-    // App switcher blur + ekran kaydı koruması
-    await ScreenProtector.protectDataLeakageOn();
-    await ScreenProtector.protectDataLeakageWithBlur();
+  // App switcher blur + ekran kaydı koruması
+  //await ScreenProtector.protectDataLeakageOn();
+  //await ScreenProtector.protectDataLeakageWithBlur();
 
-    // iOS için ekran kaydı dinleyicisi
-    ScreenProtector.addListener(() {}, (isCaptured) {
-      if (isCaptured) {
-        ScreenProtector.protectDataLeakageWithBlur();
-      }
-    });
-  }
+  // iOS için ekran kaydı dinleyicisi
+  //ScreenProtector.addListener(() {}, (isCaptured) {
+  //if (isCaptured) {
+  //ScreenProtector.protectDataLeakageWithBlur();
+  //}
+  //});
+  //}
   // --------------------------------------
 
   runApp(
@@ -166,7 +169,7 @@ class LifecycleManager extends StatefulWidget {
 class _LifecycleManagerState extends State<LifecycleManager>
     with WidgetsBindingObserver {
   DateTime? _lastPausedTime;
-  final int _lockTimeoutSeconds = 60;
+  final int _lockTimeoutSeconds = 60; // 60 saniye sonra kilitler
   final LockFacade _lockFacade = LockFacade();
 
   @override
@@ -266,7 +269,6 @@ class _InitializationScreenState extends State<InitializationScreen> {
   }
 
   Future<_InitErrorAction?> _showInitErrorDialog() async {
-    // Context null check yapmaya gerek yok, mounted kontrolü yukarıda var
     final loc = AppLocalizations.of(context)!;
 
     return showDialog<_InitErrorAction>(

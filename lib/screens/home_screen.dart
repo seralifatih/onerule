@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+// Proje adınıza göre import yolunu kontrol edin
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../constants/password_categories.dart';
 import '../models/password_model.dart';
@@ -32,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final loc = AppLocalizations.of(context)!;
 
     return Scaffold(
-      // --- APP BAR (MODERN) ---
+      // --- APP BAR ---
       appBar: AppBar(
         title: Text(loc.myVaultTitle),
         actions: [
@@ -55,11 +56,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .scaffoldBackgroundColor, // Arka planla uyumlu
+              color: Theme.of(context).scaffoldBackgroundColor,
               border: Border(
-                  bottom: BorderSide(
-                      color: Colors.white.withOpacity(0.05))), // Hafif çizgi
+                  bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
             ),
             child: Column(
               children: [
@@ -112,7 +111,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   provider.search(_searchController.text);
                                 }
                               },
-                              // Seçili ise Neon Mavi, değilse Koyu Gri
                               backgroundColor:
                                   Theme.of(context).colorScheme.surface,
                               selectedColor: Theme.of(context)
@@ -136,7 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ? Theme.of(context).colorScheme.primary
                                         : Colors.transparent),
                               ),
-                              // HATA DÜZELTİLDİ: 'border' parametresi kaldırıldı.
                             ),
                           );
                         }).toList(),
@@ -173,8 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
                 return ListView.builder(
                   itemCount: passwords.length,
-                  padding: const EdgeInsets.only(
-                      top: 10, bottom: 100), // FAB için boşluk
+                  padding: const EdgeInsets.only(top: 10, bottom: 100),
                   itemBuilder: (context, index) {
                     final password = passwords[index];
                     return _buildPasswordTile(context, password, provider);
@@ -186,24 +182,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      // --- FLOAT ACTION BUTTON (EKLEME) ---
+      // --- FAB ---
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: const AddPasswordSheet()),
-          );
-        },
+        onPressed: () => _openAddEditSheet(context, null),
         backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.black, // Koyu tema üstünde siyah yazı okunur
+        foregroundColor: Colors.black,
         elevation: 10,
         label: Text(loc.newPassword,
             style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -212,56 +195,98 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- LİSTE ELEMANI TASARIMI (MODERN KARTLAR) ---
+  void _openAddEditSheet(BuildContext context, PasswordModel? password) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: AddPasswordSheet(passwordToEdit: password)),
+    );
+  }
+
+  // --- LİSTE ELEMANI (SWIPE) ---
   Widget _buildPasswordTile(
       BuildContext context, PasswordModel password, PasswordProvider provider) {
     final loc = AppLocalizations.of(context)!;
+
     return Dismissible(
       key: Key(password.id),
-      direction: DismissDirection.endToStart,
+      // Hem sağa hem sola kaydırmaya izin ver
+      direction: DismissDirection.horizontal,
+
+      // SOLA KAYDIRMA (SİLME) -> KIRMIZI
       background: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.red.withOpacity(0.2), // Şeffaf Kırmızı
-          border: Border.all(color: Colors.red.withOpacity(0.5)),
+          color: Colors.red.withOpacity(0.8), // Koyu kırmızı
+          borderRadius: BorderRadius.circular(16),
+        ),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 24),
+        child: const Icon(Icons.delete_forever, color: Colors.white, size: 28),
+      ),
+
+      // SAĞA KAYDIRMA (DÜZENLEME) -> YEŞİL
+      secondaryBackground: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.8), // Koyu yeşil
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete_outline, color: Colors.red),
+        padding: const EdgeInsets.only(right: 24),
+        child: const Icon(Icons.edit, color: Colors.white, size: 28),
       ),
+
       confirmDismiss: (direction) async {
-        return await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: Theme.of(ctx).colorScheme.surface,
-            title: Text(loc.deletePasswordTitle),
-            content: Text(loc.deletePasswordMessage),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(loc.cancel)),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red.withOpacity(0.8)),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(loc.delete),
-              ),
-            ],
-          ),
-        );
+        if (direction == DismissDirection.startToEnd) {
+          // --- SOLDAN SAĞA (SİLME) ---
+          return await showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: Theme.of(ctx).colorScheme.surface,
+              title: Text(loc.deletePasswordTitle),
+              content: Text(loc.deletePasswordMessage),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text(loc.cancel)),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red.withOpacity(0.8)),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(loc.delete),
+                ),
+              ],
+            ),
+          );
+        } else {
+          // --- SAĞDAN SOLA (DÜZENLEME) ---
+          // Silme işlemini iptal et (false dön) ve düzenleme ekranını aç
+          _openAddEditSheet(context, password);
+          return false;
+        }
       },
+
       onDismissed: (direction) {
-        provider.deletePassword(password.id);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(loc.passwordDeleted)));
+        // Sadece silme yönü (startToEnd) onaylandığında burası çalışır
+        if (direction == DismissDirection.startToEnd) {
+          provider.deletePassword(password.id);
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(loc.passwordDeleted)));
+        }
       },
+
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
-          // Hafif neon kenarlık
           border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
           boxShadow: [
             BoxShadow(
@@ -329,21 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
 
-          onTap: () {
-            // Düzenleme Ekranı
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(24)),
-                  ),
-                  child: AddPasswordSheet(passwordToEdit: password)),
-            );
-          },
+          onTap: () => _openAddEditSheet(context, password),
         ),
       ),
     );
