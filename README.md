@@ -39,7 +39,6 @@ OneRule takes security seriously:
 2.  **Memory Hygiene:** Sensitive data (like PINs and passwords) are cleared from memory (`RAM`) immediately after use.
 3.  **Leakage Prevention:** Android's `allowBackup="false"` is set to prevent ADB backups and automatic Google Drive backups of the encrypted container.
 
-## 📸 Screenshots
 
 ## 📸 Screenshots
 
