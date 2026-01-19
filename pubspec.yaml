@@ -1,0 +1,58 @@
+name: offline_pass_manager
+description: "Offline password manager application"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.3 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # --- Database ---
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # --- Security ---
+  flutter_secure_storage: ^9.0.0
+  local_auth: ^2.1.8
+
+  # --- State Management ---
+  provider: ^6.1.2
+
+  # --- Utilities ---
+  uuid: ^4.2.2
+  google_fonts: ^6.1.0
+
+  # File & Backup
+  path_provider: ^2.1.1
+  file_picker: ^8.0.0
+  share_plus: ^10.0.0
+
+  # --- UI & Localization ---
+  cupertino_icons: ^1.0.6
+  flutter_localizations:
+    sdk: flutter
+  screen_protector: ^1.4.13
+  cryptography: ^2.9.0
+  shared_preferences: ^2.5.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+
+  # Code Generation
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.8
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/
+
+
