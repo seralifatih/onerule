@@ -1,4 +1,4 @@
-package com.example.onerule
+package com.fidevelopment.onerule
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
