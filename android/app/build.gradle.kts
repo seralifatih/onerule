@@ -1,7 +1,7 @@
 import java.util.Properties
 import java.io.FileInputStream
 
-// Load keystore properties
+// Keystore dosyasını yükleme işlemi
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
@@ -11,12 +11,15 @@ if (keystorePropertiesFile.exists()) {
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // Flutter Gradle Plugin, Android ve Kotlin pluginlerinden sonra gelmelidir.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
-    namespace = "com.example.onerule"
+    // DÜZELTME: Burası uygulamanızın paket yapısıyla aynı olmalıdır.
+    // Eskiden "com.example.onerule" idi, bu yüzden hata alıyordunuz.
+    namespace = "com.fidevelopment.onerule"
+    
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -30,6 +33,7 @@ android {
     }
 
     defaultConfig {
+        // Application ID: Play Store'da görünen kimlik
         applicationId = "com.fidevelopment.onerule"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
@@ -39,16 +43,22 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
+            // key.properties dosyası varsa değerleri oradan al, yoksa boş geç (build hatasını önlemek için)
+            if (keystoreProperties.isNotEmpty()) {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
         }
     }
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            // Eğer key.properties düzgün yüklendiyse imzalama yapılandırmasını kullan
+            if (keystoreProperties.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
         }
