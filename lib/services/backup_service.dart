@@ -5,18 +5,25 @@ import 'package:cryptography/cryptography.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart'; // Telefondaki klasör yolları için
-import 'package:share_plus/share_plus.dart'; // Telefonda paylaşım menüsü için
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../services/secure_storage_service.dart';
 
 class BackupService {
-  final SecureStorageService _storage = SecureStorageService();
-  static const String _defaultCategory = 'General';
+  BackupService({SecureStorageService? storage})
+      : _storage = storage ?? SecureStorageService();
 
-  // --- DIŞARI AKTAR (EXPORT) ---
+  final SecureStorageService _storage;
+
+  static const String _defaultCategory = 'General';
+  static const int _backupSchemaVersion = 2;
+  static const int _pbkdf2Iterations = 200000;
+
   Future<void> exportPasswords(
-      BuildContext context, List<Map<String, dynamic>> records) async {
+    BuildContext context,
+    List<Map<String, dynamic>> records,
+  ) async {
     final loc = AppLocalizations.of(context)!;
     try {
       if (records.isEmpty) {
@@ -34,31 +41,21 @@ class BackupService {
         return;
       }
 
-      // 1. Verileri JSON formatına çevir
-      String jsonString = jsonEncode(records);
+      final exportString = await createEncryptedBackup(
+        records: records,
+        passphrase: passphrase,
+      );
 
-      final encryptedPayload = await _encryptPayload(jsonString, passphrase);
-      final exportString = jsonEncode(encryptedPayload);
+      final dateStr = DateFormat('yyyy-MM-dd_HH-mm').format(DateTime.now());
+      final fileName = 'onerule_backup_$dateStr.onerule';
 
-      // Dosya ismini hazırla
-      String dateStr = DateFormat('yyyy-MM-dd_HH-mm').format(DateTime.now());
-      String fileName = "onerule_backup_$dateStr.onerule";
-
-      // 2. Platforma göre kaydetme yöntemi seç
       if (Platform.isAndroid || Platform.isIOS) {
-        // --- TELEFON İÇİN (Android/iOS) ---
-        // Dosyayı önce geçici bir alana yazmamız lazım
         final directory = await getTemporaryDirectory();
         final file = File('${directory.path}/$fileName');
         await file.writeAsString(exportString);
-
-        // Şimdi "Paylaş" menüsünü aç (Kullanıcı buradan Drive'a veya Dosyalara kaydet diyebilir)
-        // iPad'de menünün nerede açılacağını belirtmek için sharePositionOrigin gerekli olabilir ama telefonda zorunlu değil.
         await Share.shareXFiles([XFile(file.path)], text: loc.backupShareText);
       } else {
-        // --- BİLGİSAYAR İÇİN (Windows/Mac/Linux) ---
-        // Klasik "Farklı Kaydet" penceresi aç
-        String? outputFile = await FilePicker.platform.saveFile(
+        final outputFile = await FilePicker.platform.saveFile(
           dialogTitle: loc.saveBackupFileTitle,
           fileName: fileName,
           type: FileType.custom,
@@ -66,84 +63,92 @@ class BackupService {
         );
 
         if (outputFile != null) {
-          File file = File(outputFile);
+          final file = File(outputFile);
           await file.writeAsString(exportString);
           _showSnack(context, loc.backupSavedToDevice);
         }
       }
 
+      await _storage.setLastBackupAt(DateTime.now());
       passphrase = '';
     } catch (e) {
       _showSnack(context, loc.exportFailed(e.toString()));
     }
   }
 
-  // --- İÇERİ AL (IMPORT) ---
-  // Import işlemi hem telefonda hem bilgisayarda "Dosya Seçici" ile çalışır
   Future<void> importPasswords(
     BuildContext context, {
     required Future<void> Function(Map<String, dynamic> record) addRecord,
   }) async {
     final loc = AppLocalizations.of(context)!;
     try {
-      // Dosya seçme penceresi aç
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['onerule', 'json'],
       );
 
-      if (result != null) {
-        File file = File(result.files.single.path!);
-        final extension = result.files.single.extension ?? '';
-        if (extension.toLowerCase() == 'json') {
-          final ok = await _confirmLegacyJsonImport(context);
-          if (!ok) {
-            return;
-          }
-          await _importLegacyJson(context, file, addRecord: addRecord);
-          return;
-        }
-
-        String encryptedString = await file.readAsString();
-
-        String? passphrase = await _askForPassphrase(
-          context,
-          title: loc.backupPassphraseTitle,
-          hint: loc.backupPassphraseHint,
-        );
-        if (passphrase == null || passphrase.isEmpty) {
-          return;
-        }
-
-        final decrypted = await _decryptPayload(encryptedString, passphrase);
-        passphrase = '';
-        if (decrypted == null) {
-          _showSnack(context, loc.importFailedInvalidOrPassword);
-          return;
-        }
-
-        // JSON'ı listeye çevir
-        List<dynamic> jsonList = jsonDecode(decrypted);
-        final count = await _importRecords(jsonList, addRecord: addRecord);
-        _showSnack(context, loc.passwordsImported(count));
+      if (result == null) {
+        return;
       }
-    } catch (e) {
+
+      final file = File(result.files.single.path!);
+      final extension = result.files.single.extension ?? '';
+
+      if (extension.toLowerCase() == 'json') {
+        final ok = await _confirmLegacyJsonImport(context);
+        if (!ok) {
+          return;
+        }
+        await _importLegacyJson(context, file, addRecord: addRecord);
+        return;
+      }
+
+      final encryptedString = await file.readAsString();
+      String? passphrase = await _askForPassphrase(
+        context,
+        title: loc.backupPassphraseTitle,
+        hint: loc.backupPassphraseHint,
+      );
+      if (passphrase == null || passphrase.isEmpty) {
+        return;
+      }
+
+      final decryptedRecords = await decryptEncryptedBackup(
+        encryptedPayload: encryptedString,
+        passphrase: passphrase,
+      );
+      passphrase = '';
+
+      if (decryptedRecords == null) {
+        _showSnack(context, loc.importFailedInvalidOrPassword);
+        return;
+      }
+
+      final count =
+          await _importRecords(decryptedRecords, addRecord: addRecord);
+      _showSnack(context, loc.passwordsImported(count));
+    } catch (_) {
       _showSnack(context, loc.importFailed);
     }
   }
 
-  Future<void> _importLegacyJson(BuildContext context, File file,
-      {required Future<void> Function(Map<String, dynamic> record)
-          addRecord}) async {
+  Future<void> _importLegacyJson(
+    BuildContext context,
+    File file, {
+    required Future<void> Function(Map<String, dynamic> record) addRecord,
+  }) async {
     final loc = AppLocalizations.of(context)!;
     try {
-      String jsonString = await file.readAsString();
-      List<dynamic> jsonList = jsonDecode(jsonString);
-      final count = await _importRecords(jsonList, addRecord: addRecord);
+      final jsonString = await file.readAsString();
+      final parsed = jsonDecode(jsonString);
+      if (parsed is! List<dynamic>) {
+        throw const FormatException('Legacy JSON backup must be a list.');
+      }
 
+      final count = await _importRecords(parsed, addRecord: addRecord);
       await _storage.setLegacyJsonImportCompleted();
       _showSnack(context, loc.passwordsImported(count));
-    } catch (e) {
+    } catch (_) {
       _showSnack(context, loc.importFailed);
     }
   }
@@ -152,8 +157,8 @@ class BackupService {
     List<dynamic> jsonList, {
     required Future<void> Function(Map<String, dynamic> record) addRecord,
   }) async {
-    int count = 0;
-    for (var item in jsonList) {
+    var count = 0;
+    for (final item in jsonList) {
       final record = Map<String, dynamic>.from(item as Map);
       record['category'] ??= _defaultCategory;
       await addRecord(record);
@@ -175,8 +180,9 @@ class BackupService {
         content: Text(loc.legacyImportWarningBody),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(loc.cancel)),
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(loc.cancel),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(loc.legacyImportConfirm),
@@ -188,8 +194,11 @@ class BackupService {
     return confirmed == true;
   }
 
-  Future<String?> _askForPassphrase(BuildContext context,
-      {required String title, required String hint}) async {
+  Future<String?> _askForPassphrase(
+    BuildContext context, {
+    required String title,
+    required String hint,
+  }) async {
     final controller = TextEditingController();
     final loc = AppLocalizations.of(context)!;
 
@@ -201,14 +210,13 @@ class BackupService {
           content: TextField(
             controller: controller,
             obscureText: true,
-            decoration: InputDecoration(
-              hintText: hint,
-            ),
+            decoration: InputDecoration(hintText: hint),
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(loc.cancel)),
+              onPressed: () => Navigator.pop(context),
+              child: Text(loc.cancel),
+            ),
             FilledButton(
               onPressed: () => Navigator.pop(context, controller.text),
               child: Text(loc.confirm),
@@ -222,10 +230,12 @@ class BackupService {
     }
   }
 
-  Future<String?> _askForExportPassphrase(BuildContext context,
-      {required String title,
-      required String hint,
-      required String confirmHint}) async {
+  Future<String?> _askForExportPassphrase(
+    BuildContext context, {
+    required String title,
+    required String hint,
+    required String confirmHint,
+  }) async {
     final loc = AppLocalizations.of(context)!;
     final controller = TextEditingController();
     final confirmController = TextEditingController();
@@ -244,9 +254,7 @@ class BackupService {
                 TextField(
                   controller: controller,
                   obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: hint,
-                  ),
+                  decoration: InputDecoration(hintText: hint),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -261,8 +269,9 @@ class BackupService {
             ),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(loc.cancel)),
+                onPressed: () => Navigator.pop(context),
+                child: Text(loc.cancel),
+              ),
               FilledButton(
                 onPressed: () {
                   final first = controller.text;
@@ -292,12 +301,46 @@ class BackupService {
     }
   }
 
+  Future<String> createEncryptedBackup({
+    required List<Map<String, dynamic>> records,
+    required String passphrase,
+  }) async {
+    final plaintext = jsonEncode(records);
+    final encryptedPayload = await _encryptPayload(plaintext, passphrase);
+    return jsonEncode(encryptedPayload);
+  }
+
+  Future<List<dynamic>?> decryptEncryptedBackup({
+    required String encryptedPayload,
+    required String passphrase,
+  }) async {
+    final decrypted = await _decryptPayload(encryptedPayload, passphrase);
+    if (decrypted == null) {
+      return null;
+    }
+    final parsed = jsonDecode(decrypted);
+    if (parsed is! List<dynamic>) {
+      return null;
+    }
+    return parsed;
+  }
+
+  Future<DateTime?> getLastBackupAt() {
+    return _storage.getLastBackupAt();
+  }
+
   Future<Map<String, dynamic>> _encryptPayload(
-      String plaintext, String passphrase) async {
+    String plaintext,
+    String passphrase,
+  ) async {
     final salt = _randomBytes(16);
     final nonce = _randomBytes(12);
     final key = await _deriveKey(passphrase, salt);
     final aesGcm = AesGcm.with256bits();
+
+    final parsedPayload = jsonDecode(plaintext);
+    final itemCount = parsedPayload is List ? parsedPayload.length : 0;
+    final now = DateTime.now().toUtc();
 
     final secretBox = await aesGcm.encrypt(
       utf8.encode(plaintext),
@@ -306,18 +349,38 @@ class BackupService {
     );
 
     return {
-      'v': 1,
+      'v': _backupSchemaVersion,
       'salt': base64UrlEncode(salt),
       'nonce': base64UrlEncode(secretBox.nonce),
       'cipherText': base64UrlEncode(secretBox.cipherText),
       'mac': base64UrlEncode(secretBox.mac.bytes),
+      'kdf': {
+        'algorithm': 'PBKDF2-HMAC-SHA256',
+        'iterations': _pbkdf2Iterations,
+        'saltLength': 16,
+        'keyBits': 256,
+      },
+      'cipher': {
+        'algorithm': 'AES-GCM-256',
+        'nonceLength': 12,
+      },
+      'meta': {
+        'createdAt': now.toIso8601String(),
+        'itemCount': itemCount,
+      },
     };
   }
 
   Future<String?> _decryptPayload(
-      String encryptedPayload, String passphrase) async {
+    String encryptedPayload,
+    String passphrase,
+  ) async {
     final data = jsonDecode(encryptedPayload);
-    if (data is! Map<String, dynamic> || data['v'] != 1) {
+    if (data is! Map<String, dynamic>) {
+      return null;
+    }
+    final version = data['v'];
+    if (version != 1 && version != _backupSchemaVersion) {
       return null;
     }
 
@@ -330,11 +393,7 @@ class BackupService {
       final aesGcm = AesGcm.with256bits();
 
       final clearText = await aesGcm.decrypt(
-        SecretBox(
-          cipherText,
-          nonce: nonce,
-          mac: Mac(macBytes),
-        ),
+        SecretBox(cipherText, nonce: nonce, mac: Mac(macBytes)),
         secretKey: key,
       );
 
@@ -347,7 +406,7 @@ class BackupService {
   Future<SecretKey> _deriveKey(String passphrase, List<int> salt) async {
     final pbkdf2 = Pbkdf2(
       macAlgorithm: Hmac.sha256(),
-      iterations: 200000,
+      iterations: _pbkdf2Iterations,
       bits: 256,
     );
     return pbkdf2.deriveKey(

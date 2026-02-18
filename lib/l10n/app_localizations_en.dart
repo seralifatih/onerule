@@ -185,6 +185,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String copiedUsername(Object title) {
+    return 'Copied $title username!';
+  }
+
+  @override
   String get pinMinLength => 'PIN must be at least 4 digits';
 
   @override
@@ -266,6 +271,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backupSavedToDevice => 'Backup saved to device.';
+
+  @override
+  String backupLastTimestamp(Object timestamp) {
+    return 'Last backup: $timestamp';
+  }
 
   @override
   String exportFailed(Object error) {

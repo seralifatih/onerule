@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../providers/password_provider.dart';
+import '../services/analytics_service.dart';
 import '../services/app_facade.dart';
 import 'login_screen.dart';
 import '../providers/theme_provider.dart';
@@ -17,19 +19,30 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthFacade _authFacade = AuthFacade();
   final BackupFacade _backupFacade = BackupFacade();
+  final AnalyticsService _analytics = AnalyticsService.instance;
 
   bool _biometricEnabled = false;
   bool _hardwareAvailable = false; // Cihazda parmak izi var mı?
+  DateTime? _lastBackupAt;
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _loadBackupStatus();
   }
 
   Future<void> _loadSettings() async {
-    bool enabled = await _authFacade.isBiometricEnabled();
-    bool available = await _authFacade.isBiometricsAvailable();
+    bool enabled = false;
+    bool available = false;
+
+    try {
+      enabled = await _authFacade.isBiometricEnabled();
+      available = await _authFacade.isBiometricsAvailable();
+    } catch (_) {
+      enabled = false;
+      available = false;
+    }
 
     // GÜNCELLEME: Cihaz desteklemiyorsa veritabanındaki ayarı ARTIK DEĞİŞTİRMİYORUZ.
     // Böylece kullanıcı telefon değiştirirse tercihi (true/false) korunur.
@@ -43,6 +56,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _loadBackupStatus() async {
+    final lastBackupAt = await _backupFacade.getLastBackupAt();
+    if (!mounted) return;
+    setState(() {
+      _lastBackupAt = lastBackupAt;
+    });
+  }
+
   // --- DİALOG FONKSİYONLARI ---
   void _showVerifyCurrentPinDialog() {
     final verifyController = TextEditingController();
@@ -52,41 +73,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(loc.verify),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(loc.verifyCurrentPinDescription),
-          const SizedBox(height: 10),
-          TextField(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(loc.verifyCurrentPinDescription),
+            const SizedBox(height: 10),
+            TextField(
               controller: verifyController,
               keyboardType: TextInputType.number,
               maxLength: 6,
               obscureText: true,
               decoration: const InputDecoration(
-                  hintText: "••••••",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock_outline))),
-        ]),
+                hintText: "••••••",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context), child: Text(loc.cancel)),
+            onPressed: () => Navigator.pop(context),
+            child: Text(loc.cancel),
+          ),
           FilledButton(
-              onPressed: () async {
-                bool isValid =
-                    await _authFacade.verifyMasterPin(verifyController.text);
+            onPressed: () async {
+              bool isValid = await _authFacade.verifyMasterPin(
+                verifyController.text,
+              );
 
-                // GÜVENLİK: İşlem biter bitmez controller'ı temizle
-                verifyController.clear();
+              // GÜVENLİK: İşlem biter bitmez controller'ı temizle
+              verifyController.clear();
 
-                if (isValid && mounted) {
-                  Navigator.pop(context);
-                  _showSetNewPinDialog();
-                } else if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(loc.wrongPin),
-                      backgroundColor: Colors.red));
-                }
-              },
-              child: Text(loc.verify))
+              if (isValid && mounted) {
+                Navigator.pop(context);
+                _showSetNewPinDialog();
+              } else if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(loc.wrongPin),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: Text(loc.verify),
+          ),
         ],
       ),
     );
@@ -96,111 +129,139 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final newPinController = TextEditingController();
     final loc = AppLocalizations.of(context)!;
     showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-                title: Text(loc.setNewPinTitle),
-                content: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(loc.setNewPinDescription),
-                  const SizedBox(height: 10),
-                  TextField(
-                      controller: newPinController,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                          hintText: "••••••",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.key))),
-                ]),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(loc.cancel)),
-                  FilledButton(
-                      onPressed: () async {
-                        final newPin = newPinController.text;
-                        final provider = Provider.of<PasswordProvider>(context,
-                            listen: false);
-                        try {
-                          await _authFacade.changeMasterPin(
-                            context: context,
-                            newPin: newPin,
-                            provider: provider,
-                          );
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(loc.setNewPinTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(loc.setNewPinDescription),
+            const SizedBox(height: 10),
+            TextField(
+              controller: newPinController,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              obscureText: true,
+              decoration: const InputDecoration(
+                hintText: "••••••",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.key),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(loc.cancel),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final newPin = newPinController.text;
+              final provider = Provider.of<PasswordProvider>(
+                context,
+                listen: false,
+              );
+              try {
+                await _authFacade.changeMasterPin(
+                  context: context,
+                  newPin: newPin,
+                  provider: provider,
+                );
 
-                          // GÜVENLİK: PIN değişti, belleği temizle
-                          newPinController.clear();
+                // GÜVENLİK: PIN değişti, belleği temizle
+                newPinController.clear();
 
-                          if (mounted) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(loc.pinChangeSuccess)));
-                          }
-                        } on AuthException catch (_) {
-                          // Hata durumunda da temizle
-                          newPinController.clear();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(loc.pinChangeFailed),
-                                backgroundColor: Colors.red));
-                          }
-                        }
-                      },
-                      child: Text(loc.save))
-                ]));
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(loc.pinChangeSuccess)));
+                }
+              } on AuthException catch (_) {
+                // Hata durumunda da temizle
+                newPinController.clear();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(loc.pinChangeFailed),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(loc.save),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSetPanicPinDialog() {
     final panicController = TextEditingController();
     final loc = AppLocalizations.of(context)!;
     showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-                title: Text(loc.setPanicPin),
-                content: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(loc.enterPanicPin),
-                  const SizedBox(height: 10),
-                  TextField(
-                      controller: panicController,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                          hintText: "••••••", border: OutlineInputBorder()))
-                ]),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(loc.cancel)),
-                  FilledButton(
-                      style:
-                          FilledButton.styleFrom(backgroundColor: Colors.red),
-                      onPressed: () async {
-                        try {
-                          await _authFacade.setPanicPin(
-                            context: context,
-                            panicPin: panicController.text,
-                          );
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(loc.setPanicPin),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(loc.enterPanicPin),
+            const SizedBox(height: 10),
+            TextField(
+              controller: panicController,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              obscureText: true,
+              decoration: const InputDecoration(
+                hintText: "••••••",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(loc.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              try {
+                await _authFacade.setPanicPin(
+                  context: context,
+                  panicPin: panicController.text,
+                );
 
-                          // GÜVENLİK: Panik PIN'i bellekte tutma
-                          panicController.clear();
+                // GÜVENLİK: Panik PIN'i bellekte tutma
+                panicController.clear();
 
-                          if (mounted) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(loc.panicPinSet)));
-                          }
-                        } on AuthException catch (e) {
-                          panicController.clear();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(e.message),
-                                backgroundColor: Colors.red));
-                          }
-                        }
-                      },
-                      child: Text(loc.save))
-                ]));
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(loc.panicPinSet)));
+                }
+              } on AuthException catch (e) {
+                panicController.clear();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.message),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(loc.save),
+          ),
+        ],
+      ),
+    );
   }
 
   void _logout() {
@@ -215,6 +276,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     final loc = AppLocalizations.of(context)!;
+    final backupStatusText = _lastBackupAt == null
+        ? '-'
+        : DateFormat('yyyy-MM-dd HH:mm').format(_lastBackupAt!);
 
     return Scaffold(
       appBar: AppBar(title: Text(loc.settings)),
@@ -230,9 +294,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(left: 12, bottom: 8),
-                  child: Text(loc.language,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.grey)),
+                  child: Text(
+                    loc.language,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -265,8 +333,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                     style: ButtonStyle(
                       visualDensity: VisualDensity.comfortable,
-                      shape: MaterialStateProperty.all(RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
+                      shape: MaterialStateProperty.all(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -283,9 +354,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(left: 12, bottom: 8),
-                  child: Text(loc.appearance,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.grey)),
+                  child: Text(
+                    loc.appearance,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -313,8 +388,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                     style: ButtonStyle(
                       visualDensity: VisualDensity.comfortable,
-                      shape: MaterialStateProperty.all(RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
+                      shape: MaterialStateProperty.all(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -333,12 +411,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // --- BİYOMETRİK GİRİŞ ---
           SwitchListTile(
-            secondary: Icon(Icons.fingerprint,
-                color: _hardwareAvailable ? Colors.teal : Colors.grey),
+            secondary: Icon(
+              Icons.fingerprint,
+              color: _hardwareAvailable ? Colors.teal : Colors.grey,
+            ),
             title: Text(loc.biometricLogin),
-            subtitle: Text(_hardwareAvailable
-                ? loc.biometricAvailable
-                : loc.biometricUnavailable),
+            subtitle: Text(
+              _hardwareAvailable
+                  ? loc.biometricAvailable
+                  : loc.biometricUnavailable,
+            ),
             value: _biometricEnabled,
             // Donanım yoksa (available=false) onChanged NULL olur -> Tıklanamaz.
             // Ama yukarıdaki 'value' sayesinde kullanıcının tercihi (açıksa) açık görünür.
@@ -351,8 +433,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           ListTile(
-            leading:
-                const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            leading: const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange,
+            ),
             title: Text(loc.setPanicPin),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: _showSetPanicPinDialog,
@@ -362,18 +446,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           Padding(
             padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
-            child: Text(loc.dataManagement,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.grey)),
+            child: Text(
+              loc.dataManagement,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
           ),
 
           ListTile(
             leading: const Icon(Icons.upload_file, color: Colors.purple),
             title: Text(loc.exportPasswords),
+            subtitle: Text(loc.backupLastTimestamp(backupStatusText)),
             onTap: () async {
-              final provider =
-                  Provider.of<PasswordProvider>(context, listen: false);
+              final provider = Provider.of<PasswordProvider>(
+                context,
+                listen: false,
+              );
               await _backupFacade.exportPasswords(context, provider);
+              await _loadBackupStatus();
             },
           ),
 
@@ -381,9 +473,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.download_for_offline, color: Colors.teal),
             title: Text(loc.importPasswords),
             onTap: () async {
-              final provider =
-                  Provider.of<PasswordProvider>(context, listen: false);
+              final provider = Provider.of<PasswordProvider>(
+                context,
+                listen: false,
+              );
               await _backupFacade.importPasswords(context, provider);
+              await _loadBackupStatus();
             },
           ),
 
@@ -391,8 +486,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
-            title: Text(loc.deleteAllData,
-                style: const TextStyle(color: Colors.redAccent)),
+            title: Text(
+              loc.deleteAllData,
+              style: const TextStyle(color: Colors.redAccent),
+            ),
             onTap: () {
               showDialog(
                 context: context,
@@ -401,13 +498,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   content: Text(loc.deleteAllDescription),
                   actions: [
                     TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(loc.cancel)),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(loc.cancel),
+                    ),
                     TextButton(
                       onPressed: () async {
-                        await Provider.of<PasswordProvider>(context,
-                                listen: false)
-                            .deleteAllPasswords();
+                        await _analytics.vaultDeleteAllTriggered();
+                        await Provider.of<PasswordProvider>(
+                          context,
+                          listen: false,
+                        ).deleteAllPasswords();
+                        final provider = Provider.of<PasswordProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await _analytics.vaultDeleteAllListEmptyConfirmed(
+                          isEmpty: provider.passwords.isEmpty,
+                        );
                         if (context.mounted) {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -415,8 +522,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           );
                         }
                       },
-                      child: Text(loc.delete,
-                          style: const TextStyle(color: Colors.red)),
+                      child: Text(
+                        loc.delete,
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     ),
                   ],
                 ),

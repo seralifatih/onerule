@@ -63,6 +63,12 @@
             "title": {}
         }
     },
+    "copiedUsername": "{title} kullanıcı adı kopyalandı!",
+    "@copiedUsername": {
+        "placeholders": {
+            "title": {}
+        }
+    },
     "pinMinLength": "PIN en az 4 haneli olmalı",
     "incorrectPin": "PIN hatalı!",
     "createMasterPinTitle": "Ana PIN Oluştur",
@@ -90,6 +96,12 @@
     "backupShareText": "OneRule şifre yedeği",
     "saveBackupFileTitle": "Yedek dosyasını kaydet",
     "backupSavedToDevice": "Yedek cihaza kaydedildi.",
+    "backupLastTimestamp": "Son yedek: {timestamp}",
+    "@backupLastTimestamp": {
+        "placeholders": {
+            "timestamp": {}
+        }
+    },
     "exportFailed": "Dışa aktarma başarısız: {error}",
     "@exportFailed": {
         "placeholders": {

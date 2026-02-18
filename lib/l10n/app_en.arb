@@ -63,6 +63,12 @@
             "title": {}
         }
     },
+    "copiedUsername": "Copied {title} username!",
+    "@copiedUsername": {
+        "placeholders": {
+            "title": {}
+        }
+    },
     "pinMinLength": "PIN must be at least 4 digits",
     "incorrectPin": "Incorrect PIN!",
     "createMasterPinTitle": "Create Master PIN",
@@ -90,6 +96,12 @@
     "backupShareText": "OneRule password backup",
     "saveBackupFileTitle": "Save backup file",
     "backupSavedToDevice": "Backup saved to device.",
+    "backupLastTimestamp": "Last backup: {timestamp}",
+    "@backupLastTimestamp": {
+        "placeholders": {
+            "timestamp": {}
+        }
+    },
     "exportFailed": "Export failed: {error}",
     "@exportFailed": {
         "placeholders": {

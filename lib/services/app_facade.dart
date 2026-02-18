@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'dart:io'; // Platform kontrolü için gerekli
+import 'dart:io'; // Platform kontrolu icin gerekli
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:screen_protector/screen_protector.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../constants/password_categories.dart';
 import '../providers/password_provider.dart';
@@ -94,80 +93,52 @@ class AuthFacade {
     await _storageService.setPanicPin(panicPin);
   }
 
+  Future<BiometricUnlockOutcome> attemptBiometricUnlock({
+    required PasswordProvider provider,
+    required String localizedReason,
+  }) async {
+    final available = await _biometricService.isBiometricsAvailable();
+    if (!available) {
+      return BiometricUnlockOutcome.unavailable;
+    }
+
+    final authenticated = await _biometricService.authenticate(
+      localizedReason: localizedReason,
+    );
+    if (!authenticated) {
+      return BiometricUnlockOutcome.failedOrCanceled;
+    }
+
+    final restored = await _storageService.restoreSessionKeyForBiometric();
+    if (!restored) {
+      return BiometricUnlockOutcome.failedOrCanceled;
+    }
+
+    provider.exitPanicMode();
+    return BiometricUnlockOutcome.success;
+  }
+
   Future<bool> biometricLogin({
     required BuildContext context,
     required PasswordProvider provider,
   }) async {
-    final authenticated = await _biometricService.authenticate(
+    final outcome = await attemptBiometricUnlock(
+      provider: provider,
       localizedReason: AppLocalizations.of(context)!.biometricPrompt,
     );
-    if (!authenticated) {
-      return false;
-    }
-
-    final pin = await _promptForPin(context);
-    if (pin == null) {
-      return false;
-    }
-
-    final isValid = await _storageService.checkMasterPin(pin);
-    if (!isValid) {
-      _showSnack(context, AppLocalizations.of(context)!.incorrectPin);
-      return false;
-    }
-
-    await _storageService.setSessionKeyFromPin(pin);
-    provider.exitPanicMode();
-    return true;
-  }
-
-  Future<String?> _promptForPin(BuildContext context) async {
-    final controller = TextEditingController();
-    final loc = AppLocalizations.of(context)!;
-
-    try {
-      return showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(loc.enterPin),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            obscureText: true,
-            maxLength: 6,
-            decoration: const InputDecoration(
-              hintText: "••••••",
-              counterText: "",
-            ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(loc.cancel)),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, controller.text),
-              child: Text(loc.confirm),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      controller.text = '';
-      controller.dispose();
-    }
-  }
-
-  void _showSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    return outcome == BiometricUnlockOutcome.success;
   }
 }
+
+enum BiometricUnlockOutcome { success, failedOrCanceled, unavailable }
 
 class BackupFacade {
   BackupFacade({BackupService? backupService})
       : _backupService = backupService ?? BackupService();
 
   final BackupService _backupService;
+
+  Future<DateTime?> getLastBackupAt() => _backupService.getLastBackupAt();
 
   Future<void> exportPasswords(
       BuildContext context, PasswordProvider provider) async {
@@ -206,28 +177,73 @@ class BackupFacade {
 }
 
 class LockFacade {
+  LockFacade({
+    bool Function()? isClipboardAutoClearEnabled,
+    Duration Function()? clipboardClearDuration,
+  })  : _isClipboardAutoClearEnabled =
+            isClipboardAutoClearEnabled ?? (() => true),
+        _clipboardClearDuration =
+            clipboardClearDuration ?? (() => const Duration(seconds: 30));
+
   Timer? _clipboardTimer;
-  String? _lastCopiedPassword;
+  String? _lastCopiedText;
+  final bool Function() _isClipboardAutoClearEnabled;
+  final Duration Function() _clipboardClearDuration;
 
   void copyPasswordToClipboard({
     required BuildContext context,
     required String password,
     required String title,
   }) {
-    final loc = AppLocalizations.of(context)!;
-    Clipboard.setData(ClipboardData(text: password));
-    _lastCopiedPassword = password;
-    _clipboardTimer?.cancel();
-    _clipboardTimer = Timer(const Duration(seconds: 30), () async {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      if (data?.text == _lastCopiedPassword) {
-        await Clipboard.setData(const ClipboardData(text: ''));
-      }
-    });
+    _copyToClipboard(
+      context: context,
+      value: password,
+      copiedMessage: AppLocalizations.of(context)!.copiedPassword(title),
+      autoClear: _isClipboardAutoClearEnabled(),
+    );
+  }
 
+  void copyUsernameToClipboard({
+    required BuildContext context,
+    required String username,
+    required String title,
+  }) {
+    _copyToClipboard(
+      context: context,
+      value: username,
+      copiedMessage: AppLocalizations.of(context)!.copiedUsername(title),
+      autoClear: false,
+    );
+  }
+
+  Future<void> _copyToClipboard({
+    required BuildContext context,
+    required String value,
+    required String copiedMessage,
+    required bool autoClear,
+  }) async {
+    final loc = AppLocalizations.of(context)!;
+    await Clipboard.setData(ClipboardData(text: value));
+    _lastCopiedText = value;
+
+    _clipboardTimer?.cancel();
+    if (autoClear) {
+      // TODO: Wire this to a user-facing settings toggle.
+      _clipboardTimer = Timer(_clipboardClearDuration(), () async {
+        final data = await Clipboard.getData(Clipboard.kTextPlain);
+        if (data?.text == _lastCopiedText) {
+          await Clipboard.setData(const ClipboardData(text: ''));
+        }
+      });
+    }
+
+    final message =
+        autoClear ? '$copiedMessage ${loc.clipboardWillClear}' : copiedMessage;
+
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${loc.copiedPassword(title)} ${loc.clipboardWillClear}'),
+        content: Text(message),
         behavior: SnackBarBehavior.floating,
         backgroundColor: Theme.of(context).colorScheme.secondary,
         duration: const Duration(seconds: 2),
@@ -240,15 +256,13 @@ class LockFacade {
   }
 
   void handleLifecycleState(AppLifecycleState state) {
-    // --- KRİTİK DÜZELTME BURADA ---
-    // ScreenProtector sadece Android ve iOS'ta çalışır.
-    // Windows'ta bu kodu atlamazsak uygulama çöker.
+    // ScreenProtector sadece Android ve iOS'ta calisir.
     if (Platform.isAndroid || Platform.isIOS) {
       if (state == AppLifecycleState.paused ||
           state == AppLifecycleState.inactive) {
-        //ScreenProtector.protectDataLeakageWithBlur();
+        // ScreenProtector.protectDataLeakageWithBlur();
       } else if (state == AppLifecycleState.resumed) {
-        //ScreenProtector.protectDataLeakageWithBlurOff();
+        // ScreenProtector.protectDataLeakageWithBlurOff();
       }
     }
   }

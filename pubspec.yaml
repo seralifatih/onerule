@@ -37,6 +37,7 @@ dependencies:
   screen_protector: ^1.4.13
   cryptography: ^2.9.0
   shared_preferences: ^2.5.4
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

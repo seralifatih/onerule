@@ -27,11 +27,13 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
 /coverage/
+.fvm/
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +45,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android local config and signing secrets
+/android/local.properties
+**/key.properties
+*.jks
+*.keystore
+
+# Android/Gradle generated or local-only files
+/android/.gradle/
+/android/.kotlin/
+/android/captures/
+/android/build/reports/problems/

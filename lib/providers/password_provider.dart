@@ -1,98 +1,83 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/password_model.dart';
+import '../services/analytics_service.dart';
 import '../services/database_service.dart';
 
 class PasswordProvider extends ChangeNotifier {
-  final DatabaseService _dbService = DatabaseService();
+  PasswordProvider({DatabaseService? dbService, AnalyticsService? analytics})
+      : _dbService = dbService ?? DatabaseService(),
+        _analytics = analytics ?? AnalyticsService.instance;
+
+  final DatabaseService _dbService;
+  final AnalyticsService _analytics;
 
   List<PasswordModel> _passwords = [];
-  List<PasswordModel> _filteredPasswords = [];
-
   String _selectedCategory = 'All';
+  String _searchQuery = '';
 
-  // Panik Modu Kontrolcüsü
   bool _isPanicMode = false;
   bool get isPanicMode => _isPanicMode;
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
-  // Panik Modu açıksa boş liste dön
-  List<PasswordModel> get passwords => _isPanicMode ? [] : _filteredPasswords;
+  bool _isDisposed = false;
+  int _refreshRequestId = 0;
+
+  List<PasswordModel> get passwords =>
+      _isPanicMode ? <PasswordModel>[] : _applyFilters(_passwords);
 
   String get selectedCategory => _selectedCategory;
 
-  // Uygulama açılışında çağrılır (Veritabanını burada açıyoruz)
   Future<void> init() async {
-    await _dbService.init(); // <--- Kutu burada açılıyor
-    _loadPasswords(); // <--- Veriler burada okunuyor
-    _isLoading = false;
-    notifyListeners();
+    await _dbService.init();
+    await _refreshFromDatabase();
   }
 
-  // --- PANİK MODU YÖNETİMİ ---
   void enterPanicMode() {
     _isPanicMode = true;
     _passwords.clear();
-    _filteredPasswords.clear();
-    notifyListeners();
+    _notifySafely();
   }
 
   void exitPanicMode() {
     _isPanicMode = false;
-    // _loadPasswords();  <--- HATALI SATIR SİLİNDİ!
-    // Burada yükleme yapmamıza gerek yok, çünkü Login'den sonra zaten init() çalışacak.
-    notifyListeners();
-  }
-  // ---------------------------
-
-  void _loadPasswords() {
-    // Veritabanından çek
-    _passwords = _dbService.getAllPasswords();
-    // Sırala (Yeniden eskiye)
-    _passwords.sort((a, b) => b.createdDate.compareTo(a.createdDate));
-
-    // Filtrele
-    _applyFilter();
+    _notifySafely();
   }
 
-  void _applyFilter() {
-    if (_selectedCategory == 'All') {
-      _filteredPasswords = List.from(_passwords);
-    } else {
-      _filteredPasswords =
-          _passwords.where((p) => p.category == _selectedCategory).toList();
+  List<PasswordModel> _applyFilters(List<PasswordModel> source) {
+    final normalizedQuery = _searchQuery.trim().toLowerCase();
+    final byCategory = _selectedCategory == 'All'
+        ? source
+        : source.where((p) => p.category == _selectedCategory).toList();
+
+    if (normalizedQuery.isEmpty) {
+      return List<PasswordModel>.from(byCategory);
     }
+
+    return byCategory.where((p) {
+      return p.title.toLowerCase().contains(normalizedQuery) ||
+          p.username.toLowerCase().contains(normalizedQuery);
+    }).toList();
   }
 
-  // Kategoriye Göre Filtrele
   void filterByCategory(String category) {
     _selectedCategory = category;
-    _applyFilter();
-    notifyListeners();
+    _notifySafely();
   }
 
-  // Arama Fonksiyonu
   void search(String query) {
-    List<PasswordModel> baseList = _selectedCategory == 'All'
-        ? _passwords
-        : _passwords.where((p) => p.category == _selectedCategory).toList();
-
-    if (query.isEmpty) {
-      _filteredPasswords = baseList;
-    } else {
-      _filteredPasswords = baseList.where((p) {
-        return p.title.toLowerCase().contains(query.toLowerCase()) ||
-            p.username.toLowerCase().contains(query.toLowerCase());
-      }).toList();
-    }
-    notifyListeners();
+    _searchQuery = query;
+    _notifySafely();
   }
 
-  // Şifre Ekleme
   Future<void> addPassword(
-      String title, String username, String password, String category) async {
+    String title,
+    String username,
+    String password,
+    String category,
+  ) async {
     final newPass = PasswordModel(
       id: const Uuid().v4(),
       title: title,
@@ -102,36 +87,60 @@ class PasswordProvider extends ChangeNotifier {
       createdDate: DateTime.now(),
     );
 
-    await _dbService.addPassword(newPass);
-    _loadPasswords();
-    notifyListeners();
+    await _mutateAndRefresh(() => _dbService.addPassword(newPass));
   }
 
-  // Şifre Silme
   Future<void> deletePassword(String id) async {
-    await _dbService.deletePassword(id);
-    _loadPasswords();
-    notifyListeners();
+    await _mutateAndRefresh(() => _dbService.deletePassword(id));
   }
 
-  // Şifre Güncelleme
   Future<void> updatePassword(PasswordModel password) async {
-    await _dbService.updatePassword(password);
-    _loadPasswords();
-    notifyListeners();
+    await _mutateAndRefresh(() => _dbService.updatePassword(password));
+    await _analytics.credentialUpdateReflectedInList(
+      totalItems: _passwords.length,
+      selectedCategory: _selectedCategory,
+    );
   }
 
-  // Tüm veriyi sil
   Future<void> deleteAllPasswords() async {
-    await _dbService.deleteAllPasswords();
-    _passwords.clear();
-    _filteredPasswords.clear();
-    notifyListeners();
+    await _mutateAndRefresh(_dbService.deleteAllPasswords);
   }
 
   Future<void> reencryptWithNewKey(List<int> newKey) async {
-    await _dbService.reencryptBox(newKey);
-    _loadPasswords();
-    notifyListeners();
+    await _mutateAndRefresh(() => _dbService.reencryptBox(newKey));
+  }
+
+  Future<void> _mutateAndRefresh(Future<void> Function() mutate) async {
+    await mutate();
+    await _refreshFromDatabase();
+  }
+
+  Future<void> _refreshFromDatabase() async {
+    final requestId = ++_refreshRequestId;
+    _isLoading = true;
+    _notifySafely();
+
+    final allPasswords = _dbService.getAllPasswords()
+      ..sort((a, b) => b.createdDate.compareTo(a.createdDate));
+
+    if (requestId != _refreshRequestId || _isDisposed) {
+      return;
+    }
+
+    _passwords = allPasswords;
+    _isLoading = false;
+    _notifySafely();
+  }
+
+  void _notifySafely() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }

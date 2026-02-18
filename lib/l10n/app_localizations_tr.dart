@@ -185,6 +185,11 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String copiedUsername(Object title) {
+    return '$title kullanıcı adı kopyalandı!';
+  }
+
+  @override
   String get pinMinLength => 'PIN en az 4 haneli olmalı';
 
   @override
@@ -266,6 +271,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get backupSavedToDevice => 'Yedek cihaza kaydedildi.';
+
+  @override
+  String backupLastTimestamp(Object timestamp) {
+    return 'Son yedek: $timestamp';
+  }
 
   @override
   String exportFailed(Object error) {

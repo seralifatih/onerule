@@ -448,6 +448,12 @@ abstract class AppLocalizations {
   /// **'Copied {title} password!'**
   String copiedPassword(Object title);
 
+  /// No description provided for @copiedUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied {title} username!'**
+  String copiedUsername(Object title);
+
   /// No description provided for @pinMinLength.
   ///
   /// In en, this message translates to:
@@ -609,6 +615,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Backup saved to device.'**
   String get backupSavedToDevice;
+
+  /// No description provided for @backupLastTimestamp.
+  ///
+  /// In en, this message translates to:
+  /// **'Last backup: {timestamp}'**
+  String backupLastTimestamp(Object timestamp);
 
   /// No description provided for @exportFailed.
   ///

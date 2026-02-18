@@ -5,6 +5,8 @@ import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../constants/password_categories.dart';
 import '../models/password_model.dart';
 import '../providers/password_provider.dart';
+import '../services/analytics_service.dart';
+import '../services/app_facade.dart';
 
 class AddPasswordSheet extends StatefulWidget {
   final PasswordModel? passwordToEdit;
@@ -25,6 +27,10 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
   String _selectedCategory = PasswordCategories.general;
 
   bool _isObscure = true;
+  bool _isSaving = false;
+  bool _showSaved = false;
+  final AnalyticsService _analytics = AnalyticsService.instance;
+  final LockFacade _lockFacade = LockFacade();
 
   @override
   void initState() {
@@ -41,13 +47,13 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
 
   @override
   void dispose() {
+    _lockFacade.dispose();
     _titleController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // Gelişmiş Şifre Oluşturucu Diyaloğu
   void _showGeneratorDialog() {
     showDialog(
       context: context,
@@ -56,7 +62,7 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
           onConfirm: (generatedPassword) {
             setState(() {
               _passwordController.text = generatedPassword;
-              _isObscure = false; // Şifreyi göster
+              _isObscure = false;
             });
           },
         );
@@ -72,149 +78,274 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
   Widget build(BuildContext context) {
     final isEditing = widget.passwordToEdit != null;
     final loc = AppLocalizations.of(context)!;
+    final mediaQuery = MediaQuery.of(context);
+    final keyboardInset = mediaQuery.viewInsets.bottom;
+    final safeBottom = mediaQuery.padding.bottom;
+    final effectiveBottomPadding =
+        keyboardInset > 0 ? keyboardInset : safeBottom;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 16,
-        right: 16,
-        top: 16,
-      ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isEditing ? loc.editPassword : loc.addNewPassword,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-
-              DropdownButtonFormField<String>(
-                initialValue: _selectedCategory,
-                decoration: InputDecoration(
-                  labelText: loc.categoryLabel,
-                  prefixIcon: const Icon(Icons.category_outlined),
-                  border: const OutlineInputBorder(),
-                ),
-                items: _categories.map((cat) {
-                  return DropdownMenuItem(
-                    value: cat,
-                    child: Text(_categoryLabel(loc, cat)),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedCategory = val);
-                },
-              ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: loc.platformTitleLabel,
-                  prefixIcon: const Icon(Icons.label_outline),
-                  border: const OutlineInputBorder(),
-                ),
-                validator: (v) => v!.isEmpty ? loc.titleRequired : null,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                  labelText: loc.usernameEmailLabel,
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: const OutlineInputBorder(),
-                ),
-                validator: (v) => v!.isEmpty ? loc.usernameRequired : null,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-
-              // Şifre Alanı ve İkonlar (GÜNCELLENDİ)
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _isObscure,
-                decoration: InputDecoration(
-                  labelText: loc.passwordLabel,
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  border: const OutlineInputBorder(),
-                  // İki ikonu yan yana koymak için Row kullandık
-                  suffixIcon: Row(
-                    mainAxisSize:
-                        MainAxisSize.min, // Sadece içeriği kadar yer kaplasın
-                    children: [
-                      // Şifre Göster/Gizle Butonu
-                      IconButton(
-                        icon: Icon(_isObscure
-                            ? Icons.visibility
-                            : Icons.visibility_off),
-                        onPressed: () =>
-                            setState(() => _isObscure = !_isObscure),
-                      ),
-                      // Şifre Oluşturucu Butonu (Zar)
-                      IconButton(
-                        onPressed: _showGeneratorDialog,
-                        icon: const Icon(Icons.casino),
-                        tooltip: loc.generatePasswordTooltip,
-                        // Rengini tema rengine ayarlayarak vurgulayalım
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ],
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: effectiveBottomPadding),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isEditing ? loc.editPassword : loc.addNewPassword,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                validator: (v) => v!.isEmpty ? loc.passwordRequired : null,
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: FilledButton.icon(
-                  icon: Icon(isEditing ? Icons.update : Icons.save),
-                  label: Text(isEditing ? loc.update : loc.saveAction),
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      final provider =
-                          Provider.of<PasswordProvider>(context, listen: false);
-
-                      if (isEditing) {
-                        final updatedPassword = widget.passwordToEdit!;
-                        updatedPassword.title = _titleController.text;
-                        updatedPassword.username = _usernameController.text;
-                        updatedPassword.password = _passwordController.text;
-                        updatedPassword.category = _selectedCategory;
-                        updatedPassword.lastModified = DateTime.now();
-
-                        provider.updatePassword(updatedPassword);
-                      } else {
-                        provider.addPassword(
-                          _titleController.text,
-                          _usernameController.text,
-                          _passwordController.text,
-                          _selectedCategory,
+                  const SizedBox(height: 16),
+                  if (isEditing) ...[
+                    _buildCredentialPreview(loc),
+                    const SizedBox(height: 12),
+                  ],
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: loc.categoryLabel,
+                      prefixIcon: const Icon(Icons.category_outlined),
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: _categories.map((cat) {
+                      return DropdownMenuItem(
+                        value: cat,
+                        child: Text(_categoryLabel(loc, cat)),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedCategory = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: InputDecoration(
+                      labelText: loc.platformTitleLabel,
+                      prefixIcon: const Icon(Icons.label_outline),
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? loc.titleRequired : null,
+                    textInputAction: TextInputAction.next,
+                    onChanged: (_) {
+                      if (isEditing) setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _usernameController,
+                    decoration: InputDecoration(
+                      labelText: loc.usernameEmailLabel,
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? loc.usernameRequired : null,
+                    textInputAction: TextInputAction.next,
+                    onChanged: (_) {
+                      if (isEditing) setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _isObscure,
+                    decoration: InputDecoration(
+                      labelText: loc.passwordLabel,
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              _isObscure
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () =>
+                                setState(() => _isObscure = !_isObscure),
+                          ),
+                          IconButton(
+                            onPressed: _showGeneratorDialog,
+                            icon: const Icon(Icons.casino),
+                            tooltip: loc.generatePasswordTooltip,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                    validator: (v) => v!.isEmpty ? loc.passwordRequired : null,
+                    onChanged: (_) {
+                      if (isEditing) setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton.icon(
+                      icon: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        child: _showSaved
+                            ? const Icon(Icons.check_circle, key: ValueKey('ok'))
+                            : Icon(
+                                _isSaving
+                                    ? Icons.sync
+                                    : (isEditing ? Icons.update : Icons.save),
+                                key: ValueKey(_isSaving ? 'saving' : 'idle'),
+                              ),
+                      ),
+                      label: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        child: Text(
+                          _showSaved
+                              ? loc.save
+                              : (isEditing ? loc.update : loc.saveAction),
+                          key: ValueKey(_showSaved),
+                        ),
+                      ),
+                      onPressed: () async {
+                        if (_isSaving) return;
+                        setState(() {
+                          _isSaving = true;
+                          _showSaved = false;
+                        });
+                        await _analytics.primaryCtaTap(
+                          ctaId: isEditing
+                              ? 'credential_update_submit'
+                              : 'credential_add_submit',
+                          screen: 'add_password_sheet',
                         );
-                      }
-                      Navigator.pop(context);
-                    }
-                  },
-                ),
+                        if (_formKey.currentState!.validate()) {
+                          final provider = Provider.of<PasswordProvider>(
+                            context,
+                            listen: false,
+                          );
+
+                          if (isEditing) {
+                            final updatedPassword = widget.passwordToEdit!;
+                            updatedPassword.title = _titleController.text;
+                            updatedPassword.username = _usernameController.text;
+                            updatedPassword.password = _passwordController.text;
+                            updatedPassword.category = _selectedCategory;
+                            updatedPassword.lastModified = DateTime.now();
+
+                            await _analytics.credentialUpdateSubmitted();
+                            await provider.updatePassword(updatedPassword);
+                          } else {
+                            await provider.addPassword(
+                              _titleController.text,
+                              _usernameController.text,
+                              _passwordController.text,
+                              _selectedCategory,
+                            );
+                          }
+                          if (!mounted) return;
+                          setState(() {
+                            _isSaving = false;
+                            _showSaved = true;
+                          });
+                          await Future<void>.delayed(
+                            const Duration(milliseconds: 380),
+                          );
+                          if (!mounted) return;
+                          Navigator.of(this.context).pop();
+                        } else {
+                          if (!mounted) return;
+                          setState(() {
+                            _isSaving = false;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
               ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _buildCredentialPreview(AppLocalizations loc) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final maskedLength =
+        _passwordController.text.length.clamp(6, 16).toInt();
+    final passwordPreview = _isObscure
+        ? '•' * maskedLength
+        : _passwordController.text;
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.alternate_email_rounded),
+            title: Text(loc.usernameEmailLabel),
+            subtitle: Text(
+              _usernameController.text.isEmpty ? '-' : _usernameController.text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: IconButton(
+              tooltip: loc.usernameEmailLabel,
+              icon: const Icon(Icons.copy_rounded),
+              onPressed: () {
+                _lockFacade.copyUsernameToClipboard(
+                  context: context,
+                  username: _usernameController.text,
+                  title: _titleController.text,
+                );
+              },
+            ),
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.lock_outline),
+            title: Text(loc.passwordLabel),
+            subtitle: Text(
+              passwordPreview.isEmpty ? '••••••' : passwordPreview,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: IconButton(
+              tooltip: loc.passwordLabel,
+              icon: const Icon(Icons.copy_rounded),
+              onPressed: () {
+                _lockFacade.copyPasswordToClipboard(
+                  context: context,
+                  password: _passwordController.text,
+                  title: _titleController.text,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-// --- AYRI BİR WIDGET OLARAK GENERATOR DIYALOGU ---
 class PasswordGeneratorDialog extends StatefulWidget {
   final Function(String) onConfirm;
 
@@ -238,7 +369,7 @@ class _PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
   @override
   void initState() {
     super.initState();
-    _generate(); // Açılışta bir tane üret
+    _generate();
   }
 
   void _generate() {
@@ -267,7 +398,6 @@ class _PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
     final Random rnd = Random.secure();
     final List<int> codes = [];
 
-    // En az birer karakter
     for (final pool in pools) {
       codes.add(pool.codeUnitAt(rnd.nextInt(pool.length)));
     }
@@ -277,7 +407,6 @@ class _PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
       codes.add(allChars.codeUnitAt(rnd.nextInt(allChars.length)));
     }
 
-    // Karıştır
     for (int i = codes.length - 1; i > 0; i--) {
       final int j = rnd.nextInt(i + 1);
       final int tmp = codes[i];
@@ -299,7 +428,6 @@ class _PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Önizleme Kutusu
             Container(
               padding: const EdgeInsets.all(16),
               width: double.infinity,
@@ -311,19 +439,20 @@ class _PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
                 _generatedPassword,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace'),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
               ),
             ),
             const SizedBox(height: 20),
-
-            // Uzunluk Ayarı
             Row(
               children: [
                 Text(loc.lengthLabel),
-                Text("${_length.toInt()}",
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  "${_length.toInt()}",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             Slider(
@@ -337,8 +466,6 @@ class _PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
                 _generate();
               },
             ),
-
-            // Seçenekler
             CheckboxListTile(
               title: Text(loc.uppercaseOption),
               value: _useUppercase,
@@ -387,13 +514,11 @@ class _PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
         ),
       ),
       actions: [
-        // Yenile Butonu
         TextButton.icon(
           onPressed: _generate,
           icon: const Icon(Icons.refresh),
           label: Text(loc.refresh),
         ),
-        // Onayla Butonu
         FilledButton(
           onPressed: _hasValidOptions
               ? () {

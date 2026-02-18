@@ -1,30 +1,163 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:onerule/main.dart';
+import 'package:offline_pass_manager/l10n/app_localizations.dart';
+import 'package:offline_pass_manager/models/password_model.dart';
+import 'package:offline_pass_manager/providers/language_provider.dart';
+import 'package:offline_pass_manager/providers/password_provider.dart';
+import 'package:offline_pass_manager/providers/theme_provider.dart';
+import 'package:offline_pass_manager/screens/home_screen.dart';
+import 'package:offline_pass_manager/services/database_service.dart';
+
+class _FakeDatabaseService extends DatabaseService {
+  _FakeDatabaseService(List<PasswordModel> initial)
+      : _items = initial.map(_copy).toList();
+
+  final List<PasswordModel> _items;
+
+  static PasswordModel _copy(PasswordModel model) {
+    return PasswordModel(
+      id: model.id,
+      title: model.title,
+      username: model.username,
+      password: model.password,
+      url: model.url,
+      createdDate: model.createdDate,
+      lastModified: model.lastModified,
+      category: model.category,
+    );
+  }
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  List<PasswordModel> getAllPasswords() => _items.map(_copy).toList();
+
+  @override
+  Future<void> addPassword(PasswordModel password) async {
+    _items.add(_copy(password));
+  }
+
+  @override
+  Future<void> deletePassword(String id) async {
+    _items.removeWhere((item) => item.id == id);
+  }
+
+  @override
+  Future<void> updatePassword(PasswordModel password) async {
+    final index = _items.indexWhere((item) => item.id == password.id);
+    if (index != -1) {
+      _items[index] = _copy(password);
+    }
+  }
+
+  @override
+  Future<void> deleteAllPasswords() async {
+    _items.clear();
+  }
+
+  @override
+  Future<void> reencryptBox(List<int> newKey) async {}
+}
+
+Widget _buildTestApp(PasswordProvider passwordProvider) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<PasswordProvider>.value(value: passwordProvider),
+      ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
+      ChangeNotifierProvider<LanguageProvider>(
+        create: (_) => LanguageProvider(),
+      ),
+    ],
+    child: const MaterialApp(
+      locale: Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: HomeScreen(),
+    ),
+  );
+}
+
+PasswordModel _model({required String id, required String category}) {
+  return PasswordModel(
+    id: id,
+    title: 'GitHub',
+    username: 'dev@onerule.app',
+    password: 'secret',
+    category: category,
+    createdDate: DateTime(2026, 1, 1),
+  );
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  setUp(() {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('Home shows updated category after password update', (
+    WidgetTester tester,
+  ) async {
+    final provider = PasswordProvider(
+      dbService: _FakeDatabaseService([_model(id: '1', category: 'General')]),
+    );
+    await provider.init();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.pumpWidget(_buildTestApp(provider));
+    await tester.pumpAndSettle();
+
+    expect(find.text('GENERAL'), findsOneWidget);
+    expect(find.text('SOCIAL'), findsNothing);
+
+    final updated = provider.passwords.first;
+    updated.category = 'Social';
+    updated.lastModified = DateTime(2026, 1, 2);
+    await provider.updatePassword(updated);
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('SOCIAL'), findsOneWidget);
+    expect(find.text('GENERAL'), findsNothing);
+  });
+
+  testWidgets('Delete all from Settings refreshes Home empty state', (
+    WidgetTester tester,
+  ) async {
+    final provider = PasswordProvider(
+      dbService: _FakeDatabaseService([_model(id: '2', category: 'General')]),
+    );
+    await provider.init();
+
+    await tester.pumpWidget(_buildTestApp(provider));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No passwords found.'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.settings));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byIcon(Icons.delete_forever),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byIcon(Icons.delete_forever));
+    await tester.pumpAndSettle();
+
+    final deleteButton = find
+        .descendant(
+            of: find.byType(AlertDialog), matching: find.byType(TextButton))
+        .last;
+    await tester.tap(deleteButton);
+    await tester.pumpAndSettle();
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.text('No passwords found.'), findsOneWidget);
   });
 }

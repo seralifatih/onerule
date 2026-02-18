@@ -1,6 +1,9 @@
 import java.util.Properties
 import java.io.FileInputStream
 
+val autofillMvpEnabled = (project.findProperty("oneruleAutofillMvpEnabled") as String?)
+    ?.toBooleanStrictOrNull() ?: false
+
 // Keystore dosyasını yükleme işlemi
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
@@ -32,6 +35,11 @@ android {
         jvmTarget = "17"
     }
 
+    buildFeatures {
+        buildConfig = true
+    
+    }
+    
     defaultConfig {
         // Application ID: Play Store'da görünen kimlik
         applicationId = "com.fidevelopment.onerule"
@@ -39,6 +47,12 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["oneRuleAutofillEnabled"] = autofillMvpEnabled.toString()
+        buildConfigField(
+            "boolean",
+            "ONERULE_AUTOFILL_MVP",
+            autofillMvpEnabled.toString()
+        )
     }
 
     signingConfigs {

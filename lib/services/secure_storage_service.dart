@@ -9,13 +9,22 @@ class SecureStorageService {
   static final SecureStorageService _instance =
       SecureStorageService._internal();
   factory SecureStorageService() => _instance;
-  SecureStorageService._internal();
+  SecureStorageService._internal()
+      : _secureStorage = const FlutterSecureStorage(
+          aOptions: AndroidOptions(
+            encryptedSharedPreferences: true,
+          ),
+        );
 
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
-  );
+  SecureStorageService.forTesting({FlutterSecureStorage? secureStorage})
+      : _secureStorage = secureStorage ??
+            const FlutterSecureStorage(
+              aOptions: AndroidOptions(
+                encryptedSharedPreferences: true,
+              ),
+            );
+
+  final FlutterSecureStorage _secureStorage;
 
   // --- SABİTLER ---
   static const String _keyBiometricEnabled = 'biometricEnabled';
@@ -29,6 +38,7 @@ class SecureStorageService {
   static const String _keyPanicPinSalt = 'panicPinSalt';
   static const String _keyHiveSalt = 'hiveSalt';
   static const String _keyLegacyJsonImportDone = 'legacyJsonImportDone';
+  static const String _keyLastBackupAt = 'lastBackupAt';
 
   static List<int>? _sessionKey;
 
@@ -43,7 +53,9 @@ class SecureStorageService {
 
   Future<void> setSessionKeyFromPin(String pin) async {
     // İşlemi arka planda (Isolate) yap
-    _sessionKey = await deriveHiveKeyFromPin(pin);
+    final key = await deriveHiveKeyFromPin(pin);
+    setSessionKey(key);
+    await _storeBiometricUnlockKey(key);
   }
 
   void setSessionKey(List<int> key) {
@@ -116,6 +128,22 @@ class SecureStorageService {
     final key =
         derivedHiveKey ?? await deriveHiveKeyFromPin(newPin, rotateSalt: true);
     setSessionKey(key);
+    await _storeBiometricUnlockKey(key);
+  }
+
+  Future<bool> restoreSessionKeyForBiometric() async {
+    final keyString = await _secureStorage.read(key: _keyHiveKey);
+    if (keyString == null || keyString.isEmpty) {
+      return false;
+    }
+
+    try {
+      final decoded = base64Url.decode(keyString);
+      setSessionKey(decoded);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // --- PANİK PIN ---
@@ -191,6 +219,25 @@ class SecureStorageService {
     await _secureStorage.write(key: _keyLegacyJsonImportDone, value: 'true');
   }
 
+  Future<void> setLastBackupAt(DateTime dateTime) async {
+    await _secureStorage.write(
+      key: _keyLastBackupAt,
+      value: dateTime.toUtc().toIso8601String(),
+    );
+  }
+
+  Future<DateTime?> getLastBackupAt() async {
+    final value = await _secureStorage.read(key: _keyLastBackupAt);
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    try {
+      return DateTime.parse(value).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
   // --- YARDIMCI METODLAR ---
 
   Future<List<int>> deriveHiveKeyFromPin(String pin,
@@ -231,6 +278,13 @@ class SecureStorageService {
 
   Future<void> _migrateLegacyMasterPin(String pin) async {
     await _storeMasterPinHash(pin);
+  }
+
+  Future<void> _storeBiometricUnlockKey(List<int> key) async {
+    await _secureStorage.write(
+      key: _keyHiveKey,
+      value: base64UrlEncode(key),
+    );
   }
 
   List<int> _generateSalt([int length = 16]) {
