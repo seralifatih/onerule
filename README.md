@@ -127,8 +127,7 @@ Please keep PRs small and security-aware.
 
 If you discover a security vulnerability, **do not open a public GitHub issue**.
 
-Report it privately via email: **security@fisoftware.com**  
-Alternative contact: **oneruleapp@gmail.com**
+Report it privately via email: **oneruleapp@gmail.com**  
 
 We will investigate and coordinate responsible disclosure.
 
