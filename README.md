@@ -1,9 +1,10 @@
-# 🔐 OneRule
+﻿# 🔐 OneRule
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 **OneRule is a 100% offline, zero-knowledge password manager for Android, built to protect your secrets with uncompromising privacy.**
 
 [![License](https://img.shields.io/badge/License-[Insert%20License]-blue.svg)](./LICENSE)
-[![Google Play](https://img.shields.io/badge/Google%20Play-Coming%20Soon-34A853?logo=googleplay&logoColor=white)]([Insert-Google-Play-Link])
+[![Google Play](https://img.shields.io/badge/Google%20Play-Available%20Now-34A853?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.fidevelopment.onerule)
 [![Build Status](https://img.shields.io/badge/Build-[Insert%20Status]-orange.svg)]([Insert-CI-Link])
 
 ---
@@ -21,13 +22,18 @@
 
 ---
 
+## 📱 On Google Play
+
+OneRule is in production and publicly available on Google Play:  
+https://play.google.com/store/apps/details?id=com.fidevelopment.onerule
+
+---
+
 ## 📸 Screenshots
 
-> Add 2-3 high-quality screenshots of the app UI below.
-
-| Vault | Add / Edit Entry | Settings / Security |
+| Vault | Settings | Password Generator |
 |---|---|---|
-| ![Vault Screenshot](./docs/screenshots/vault-placeholder.png) | ![Add Entry Screenshot](./docs/screenshots/add-entry-placeholder.png) | ![Settings Screenshot](./docs/screenshots/settings-placeholder.png) |
+| ![Vault Screenshot](assets/screenshots/2.jpeg) | ![Settings Screenshot](assets/screenshots/1.jpeg) | ![Password Generator Screenshot](assets/screenshots/5.jpeg) |
 
 ---
 
@@ -131,3 +137,14 @@ We will investigate and coordinate responsible disclosure.
 Licensed under **[Insert License, e.g., GPLv3 / MIT / Apache-2.0]**.
 
 See [`LICENSE`](./LICENSE) for full terms.
+
+## 📄 License
+"This project is licensed under the **GNU General Public License v3.0**. 
+
+Permissions of this strong copyleft license are conditioned on making available complete source code of licensed works and modifications under the same license. Copyright and license notices must be preserved. Contributors provide an express grant of patent rights. This ensures that OneRule remains free, open, and secure for everyone.
+
+For more details, see the [LICENSE](LICENSE) file in the root directory.
+
+Copyright © 2026 FI Software. All rights reserved."
+
+
