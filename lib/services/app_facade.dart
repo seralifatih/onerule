@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io'; // Platform kontrolu icin gerekli
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../constants/password_categories.dart';
 import '../providers/password_provider.dart';
+import '../providers/security_settings_provider.dart';
 import '../services/backup_service.dart';
 import '../services/biometric_service.dart';
 import '../services/secure_storage_service.dart';
@@ -24,6 +27,9 @@ class AuthFacade {
   Future<bool> isBiometricEnabled() => _storageService.isBiometricEnabled();
   Future<bool> isBiometricsAvailable() =>
       _biometricService.isBiometricsAvailable();
+  Future<bool> canCheckBiometrics() => _biometricService.canCheckBiometrics();
+  Future<List<String>> availableBiometrics() =>
+      _biometricService.availableBiometrics();
   Future<void> setBiometricEnabled(bool enabled) =>
       _storageService.setBiometricEnabled(enabled);
 
@@ -83,12 +89,13 @@ class AuthFacade {
     required BuildContext context,
     required String panicPin,
   }) async {
+    final loc = AppLocalizations.of(context)!;
     if (panicPin.length < 4) {
-      throw AuthException(AppLocalizations.of(context)!.pinMinLength);
+      throw AuthException(loc.pinMinLength);
     }
     final isReal = await _storageService.checkMasterPin(panicPin);
     if (isReal) {
-      throw AuthException(AppLocalizations.of(context)!.panicPinSameAsMaster);
+      throw AuthException(loc.panicPinSameAsMaster);
     }
     await _storageService.setPanicPin(panicPin);
   }
@@ -98,23 +105,52 @@ class AuthFacade {
     required String localizedReason,
   }) async {
     final available = await _biometricService.isBiometricsAvailable();
+    if (kDebugMode) {
+      debugPrint('[AuthFacade] biometricsAvailable=$available');
+    }
     if (!available) {
+      if (kDebugMode) {
+        debugPrint('[AuthFacade] outcome=${BiometricUnlockOutcome.unavailable.name}');
+      }
       return BiometricUnlockOutcome.unavailable;
     }
 
-    final authenticated = await _biometricService.authenticate(
+    final authResult = await _biometricService.authenticateDetailed(
       localizedReason: localizedReason,
     );
-    if (!authenticated) {
+    if (kDebugMode) {
+      debugPrint(
+        '[AuthFacade] biometricAuthenticate '
+        'authenticated=${authResult.authenticated} '
+        'errorType=${authResult.errorType ?? 'none'}',
+      );
+    }
+    if (!authResult.authenticated) {
+      if (kDebugMode) {
+        debugPrint(
+          '[AuthFacade] outcome=${BiometricUnlockOutcome.failedOrCanceled.name}',
+        );
+      }
       return BiometricUnlockOutcome.failedOrCanceled;
     }
 
     final restored = await _storageService.restoreSessionKeyForBiometric();
+    if (kDebugMode) {
+      debugPrint('[AuthFacade] sessionRestore restored=$restored');
+    }
     if (!restored) {
-      return BiometricUnlockOutcome.failedOrCanceled;
+      if (kDebugMode) {
+        debugPrint(
+          '[AuthFacade] outcome=${BiometricUnlockOutcome.successButRestoreFailed.name}',
+        );
+      }
+      return BiometricUnlockOutcome.successButRestoreFailed;
     }
 
     provider.exitPanicMode();
+    if (kDebugMode) {
+      debugPrint('[AuthFacade] outcome=${BiometricUnlockOutcome.success.name}');
+    }
     return BiometricUnlockOutcome.success;
   }
 
@@ -130,7 +166,12 @@ class AuthFacade {
   }
 }
 
-enum BiometricUnlockOutcome { success, failedOrCanceled, unavailable }
+enum BiometricUnlockOutcome {
+  success,
+  failedOrCanceled,
+  unavailable,
+  successButRestoreFailed,
+}
 
 class BackupFacade {
   BackupFacade({BackupService? backupService})
@@ -177,29 +218,25 @@ class BackupFacade {
 }
 
 class LockFacade {
-  LockFacade({
-    bool Function()? isClipboardAutoClearEnabled,
-    Duration Function()? clipboardClearDuration,
-  })  : _isClipboardAutoClearEnabled =
-            isClipboardAutoClearEnabled ?? (() => true),
-        _clipboardClearDuration =
-            clipboardClearDuration ?? (() => const Duration(seconds: 30));
+  LockFacade();
 
   Timer? _clipboardTimer;
   String? _lastCopiedText;
-  final bool Function() _isClipboardAutoClearEnabled;
-  final Duration Function() _clipboardClearDuration;
 
   void copyPasswordToClipboard({
     required BuildContext context,
     required String password,
     required String title,
   }) {
+    final loc = AppLocalizations.of(context)!;
+    final settings = context.read<SecuritySettingsProvider>();
+    final secs = settings.clipboardAutoClearSeconds;
     _copyToClipboard(
       context: context,
       value: password,
-      copiedMessage: AppLocalizations.of(context)!.copiedPassword(title),
-      autoClear: _isClipboardAutoClearEnabled(),
+      copiedMessage: loc.copiedToClipboard,
+      autoClear: secs > 0,
+      clearDuration: Duration(seconds: secs),
     );
   }
 
@@ -208,11 +245,16 @@ class LockFacade {
     required String username,
     required String title,
   }) {
+    final loc = AppLocalizations.of(context)!;
+    final settings = context.read<SecuritySettingsProvider>();
+    final secs = settings.clipboardAutoClearSeconds;
+    final clearUser = settings.applyClipboardPolicyToUsername;
     _copyToClipboard(
       context: context,
       value: username,
-      copiedMessage: AppLocalizations.of(context)!.copiedUsername(title),
-      autoClear: false,
+      copiedMessage: loc.usernameCopied,
+      autoClear: secs > 0 && clearUser,
+      clearDuration: Duration(seconds: secs),
     );
   }
 
@@ -221,15 +263,16 @@ class LockFacade {
     required String value,
     required String copiedMessage,
     required bool autoClear,
+    required Duration clearDuration,
   }) async {
     final loc = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     await Clipboard.setData(ClipboardData(text: value));
     _lastCopiedText = value;
 
     _clipboardTimer?.cancel();
     if (autoClear) {
-      // TODO: Wire this to a user-facing settings toggle.
-      _clipboardTimer = Timer(_clipboardClearDuration(), () async {
+      _clipboardTimer = Timer(clearDuration, () async {
         final data = await Clipboard.getData(Clipboard.kTextPlain);
         if (data?.text == _lastCopiedText) {
           await Clipboard.setData(const ClipboardData(text: ''));
@@ -243,9 +286,14 @@ class LockFacade {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Theme.of(context).colorScheme.secondary,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
         duration: const Duration(seconds: 2),
       ),
     );

@@ -8,6 +8,10 @@ import '../services/app_facade.dart';
 import 'login_screen.dart';
 import '../providers/theme_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/security_settings_provider.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -77,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(loc.verifyCurrentPinDescription),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm + AppSpacing.xs / 2),
             TextField(
               controller: verifyController,
               keyboardType: TextInputType.number,
@@ -110,10 +114,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _showSetNewPinDialog();
               } else if (mounted) {
                 Navigator.pop(context);
+                final semanticColors =
+                    Theme.of(context).extension<AppSemanticColors>() ??
+                        AppTheme.fallbackSemanticColors;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(loc.wrongPin),
-                    backgroundColor: Colors.red,
+                    backgroundColor: semanticColors.destructive,
                   ),
                 );
               }
@@ -136,7 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(loc.setNewPinDescription),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm + AppSpacing.xs / 2),
             TextField(
               controller: newPinController,
               keyboardType: TextInputType.number,
@@ -182,10 +189,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Hata durumunda da temizle
                 newPinController.clear();
                 if (mounted) {
+                  final semanticColors =
+                      Theme.of(context).extension<AppSemanticColors>() ??
+                          AppTheme.fallbackSemanticColors;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(loc.pinChangeFailed),
-                      backgroundColor: Colors.red,
+                      backgroundColor: semanticColors.destructive,
                     ),
                   );
                 }
@@ -209,7 +219,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(loc.enterPanicPin),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm + AppSpacing.xs / 2),
             TextField(
               controller: panicController,
               keyboardType: TextInputType.number,
@@ -228,7 +238,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Text(loc.cancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor:
+                  (Theme.of(context).extension<AppSemanticColors>() ??
+                          AppTheme.fallbackSemanticColors)
+                      .destructive,
+            ),
             onPressed: () async {
               try {
                 await _authFacade.setPanicPin(
@@ -248,10 +263,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               } on AuthException catch (e) {
                 panicController.clear();
                 if (mounted) {
+                  final semanticColors =
+                      Theme.of(context).extension<AppSemanticColors>() ??
+                          AppTheme.fallbackSemanticColors;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(e.message),
-                      backgroundColor: Colors.red,
+                      backgroundColor: semanticColors.destructive,
                     ),
                   );
                 }
@@ -271,11 +289,151 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  String _autoLockLabel(AppLocalizations loc, int seconds) {
+    if (seconds < 60) return loc.secondsShort(seconds);
+    final minutes = seconds ~/ 60;
+    return loc.minutesShort(minutes);
+  }
+
+  String _clipboardClearLabel(AppLocalizations loc, int seconds) {
+    if (seconds == 0) return loc.offLabel;
+    return loc.secondsShort(seconds);
+  }
+
+  Future<void> _showAutoLockPicker(
+    SecuritySettingsProvider securitySettings,
+  ) async {
+    final loc = AppLocalizations.of(context)!;
+    const options = <int>[30, 60, 120, 300];
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        final textTheme = theme.textTheme;
+        final colorScheme = theme.colorScheme;
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  loc.autoLockTitle,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ...options.map(
+                  (seconds) => Semantics(
+                    button: true,
+                    selected: securitySettings.autoLockTimeoutSeconds == seconds,
+                    label: '${loc.autoLockTitle}: ${_autoLockLabel(loc, seconds)}',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        _autoLockLabel(loc, seconds),
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      trailing: securitySettings.autoLockTimeoutSeconds == seconds
+                          ? Icon(
+                              Icons.check_rounded,
+                              color: colorScheme.primary,
+                            )
+                          : null,
+                      onTap: () => Navigator.pop(sheetContext, seconds),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (selected == null) return;
+    await securitySettings.setAutoLockTimeoutSeconds(selected);
+  }
+
+  Future<void> _showClipboardClearPicker(
+    SecuritySettingsProvider securitySettings,
+  ) async {
+    final loc = AppLocalizations.of(context)!;
+    const options = <int>[0, 15, 30, 60];
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        final textTheme = theme.textTheme;
+        final colorScheme = theme.colorScheme;
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  loc.clearClipboardAfterTitle,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ...options.map(
+                  (seconds) => Semantics(
+                    button: true,
+                    selected:
+                        securitySettings.clipboardAutoClearSeconds == seconds,
+                    label:
+                        '${loc.clearClipboardAfterTitle}: ${_clipboardClearLabel(loc, seconds)}',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        _clipboardClearLabel(loc, seconds),
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      trailing: securitySettings.clipboardAutoClearSeconds ==
+                              seconds
+                          ? Icon(
+                              Icons.check_rounded,
+                              color: colorScheme.primary,
+                            )
+                          : null,
+                      onTap: () => Navigator.pop(sheetContext, seconds),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (selected == null) return;
+    await securitySettings.setClipboardAutoClearSeconds(selected);
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
+    final securitySettings = Provider.of<SecuritySettingsProvider>(context);
     final loc = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final semanticColors =
+        theme.extension<AppSemanticColors>() ?? AppTheme.fallbackSemanticColors;
     final backupStatusText = _lastBackupAt == null
         ? '-'
         : DateFormat('yyyy-MM-dd HH:mm').format(_lastBackupAt!);
@@ -284,21 +442,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: Text(loc.settings)),
       body: ListView(
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.lg + AppSpacing.xs),
 
           // --- DİL SEÇİMİ ---
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 12, bottom: 8),
+                  padding: const EdgeInsets.only(
+                    left: AppSpacing.md,
+                    bottom: AppSpacing.sm,
+                  ),
                   child: Text(
                     loc.language,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
+                    style: textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -335,7 +495,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       visualDensity: VisualDensity.comfortable,
                       shape: MaterialStateProperty.all(
                         RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
                         ),
                       ),
                     ),
@@ -344,21 +504,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.lg + AppSpacing.xs),
 
           // --- TEMA SEÇİCİ ---
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 12, bottom: 8),
+                  padding: const EdgeInsets.only(
+                    left: AppSpacing.md,
+                    bottom: AppSpacing.sm,
+                  ),
                   child: Text(
                     loc.appearance,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
+                    style: textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -390,7 +552,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       visualDensity: VisualDensity.comfortable,
                       shape: MaterialStateProperty.all(
                         RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
                         ),
                       ),
                     ),
@@ -399,13 +561,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm + AppSpacing.xs / 2),
           const Divider(),
 
           ListTile(
-            leading: const Icon(Icons.lock_reset, color: Colors.blueGrey),
+            leading: Icon(
+              Icons.lock_reset,
+              color: colorScheme.onSurfaceVariant,
+            ),
             title: Text(loc.changeMasterPin),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
             onTap: _showVerifyCurrentPinDialog,
           ),
 
@@ -413,7 +578,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SwitchListTile(
             secondary: Icon(
               Icons.fingerprint,
-              color: _hardwareAvailable ? Colors.teal : Colors.grey,
+              color: _hardwareAvailable
+                  ? colorScheme.secondary
+                  : colorScheme.onSurfaceVariant,
             ),
             title: Text(loc.biometricLogin),
             subtitle: Text(
@@ -431,32 +598,121 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   }
                 : null,
           ),
+          Semantics(
+            button: true,
+            label:
+                '${loc.autoLockTitle}: ${_autoLockLabel(loc, securitySettings.autoLockTimeoutSeconds)}',
+            child: ListTile(
+              leading: Icon(
+                Icons.timer_outlined,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              title: Text(loc.autoLockTitle),
+              subtitle: Text(
+                _autoLockLabel(loc, securitySettings.autoLockTimeoutSeconds),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
+              onTap: () => _showAutoLockPicker(securitySettings),
+            ),
+          ),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.only(
+              left: AppSpacing.lg,
+              top: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+            ),
+            child: Text(
+              loc.clipboardSectionTitle,
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Semantics(
+            button: true,
+            label:
+                '${loc.clearClipboardAfterTitle}: ${_clipboardClearLabel(loc, securitySettings.clipboardAutoClearSeconds)}',
+            child: ListTile(
+              leading: Icon(
+                Icons.content_paste_go_rounded,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              title: Text(loc.clearClipboardAfterTitle),
+              subtitle: Text(
+                _clipboardClearLabel(
+                  loc,
+                  securitySettings.clipboardAutoClearSeconds,
+                ),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
+              onTap: () => _showClipboardClearPicker(securitySettings),
+            ),
+          ),
+          Semantics(
+            enabled: securitySettings.clipboardAutoClearSeconds > 0,
+            hint: securitySettings.clipboardAutoClearSeconds > 0
+                ? null
+                : loc.enableClipboardAutoClearFirstHint,
+            child: SwitchListTile(
+              secondary: Icon(
+                Icons.alternate_email_rounded,
+                color: securitySettings.clipboardAutoClearSeconds > 0
+                    ? colorScheme.secondary
+                    : colorScheme.onSurfaceVariant,
+              ),
+              title: Text(loc.alsoClearUsernameCopiesTitle),
+              value: securitySettings.applyClipboardPolicyToUsername,
+              onChanged: securitySettings.clipboardAutoClearSeconds > 0
+                  ? (enabled) async {
+                      await securitySettings
+                          .setApplyClipboardPolicyToUsername(enabled);
+                    }
+                  : null,
+            ),
+          ),
 
           ListTile(
-            leading: const Icon(
+            leading: Icon(
               Icons.warning_amber_rounded,
-              color: Colors.orange,
+              color: semanticColors.warning,
             ),
             title: Text(loc.setPanicPin),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
             onTap: _showSetPanicPinDialog,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(
+              left: AppSpacing.lg,
+              right: AppSpacing.lg,
+              bottom: AppSpacing.sm,
+            ),
+            child: Text(
+              loc.privacyModeHelperText,
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
 
           const Divider(),
 
           Padding(
-            padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+            padding: const EdgeInsets.only(
+              left: AppSpacing.lg,
+              top: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+            ),
             child: Text(
               loc.dataManagement,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),
 
           ListTile(
-            leading: const Icon(Icons.upload_file, color: Colors.purple),
+            leading: Icon(Icons.upload_file, color: colorScheme.primary),
             title: Text(loc.exportPasswords),
             subtitle: Text(loc.backupLastTimestamp(backupStatusText)),
             onTap: () async {
@@ -470,7 +726,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           ListTile(
-            leading: const Icon(Icons.download_for_offline, color: Colors.teal),
+            leading: Icon(
+              Icons.download_for_offline,
+              color: colorScheme.secondary,
+            ),
             title: Text(loc.importPasswords),
             onTap: () async {
               final provider = Provider.of<PasswordProvider>(
@@ -485,10 +744,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
+            leading: Icon(
+              Icons.delete_forever,
+              color: semanticColors.destructive,
+            ),
             title: Text(
               loc.deleteAllData,
-              style: const TextStyle(color: Colors.redAccent),
+              style: textTheme.bodyLarge?.copyWith(
+                color: semanticColors.destructive,
+              ),
             ),
             onTap: () {
               showDialog(
@@ -524,7 +788,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                       child: Text(
                         loc.delete,
-                        style: const TextStyle(color: Colors.red),
+                        style: textTheme.labelLarge?.copyWith(
+                          color: semanticColors.destructive,
+                        ),
                       ),
                     ),
                   ],
@@ -536,12 +802,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(AppSpacing.lg + AppSpacing.xs),
             child: OutlinedButton.icon(
               icon: const Icon(Icons.logout),
               label: Text(loc.logout),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
               ),
               onPressed: _logout,
             ),

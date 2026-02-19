@@ -57,3 +57,28 @@ app.*.map.json
 /android/.kotlin/
 /android/captures/
 /android/build/reports/problems/
+
+# Local crash/replay logs (JVM/Gradle)
+hs_err_pid*.log
+replay_pid*.log
+/android/hs_err_pid*.log
+/android/replay_pid*.log
+
+# Windows Explorer metadata
+Thumbs.db
+Desktop.ini
+
+# Environment and secret files
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.cer
+*.crt
+*.der
+
+# Local tooling caches
+.vscode/
+.cache/

@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../constants/password_categories.dart';
@@ -7,6 +8,8 @@ import '../models/password_model.dart';
 import '../providers/password_provider.dart';
 import '../services/analytics_service.dart';
 import '../services/app_facade.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 
 class AddPasswordSheet extends StatefulWidget {
   final PasswordModel? passwordToEdit;
@@ -74,10 +77,56 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
     return PasswordCategories.labelFor(loc, category);
   }
 
+  void _setPasswordRevealActive(bool isActive) {
+    final nextObscure = !isActive;
+    if (_isObscure == nextObscure) return;
+    setState(() => _isObscure = nextObscure);
+    if (isActive) {
+      HapticFeedback.selectionClick();
+    }
+  }
+
+  Widget _buildPressHoldRevealButton(AppLocalizations loc) {
+    final revealHint = loc.passwordRevealHoldHint;
+    final revealTooltip = loc.passwordRevealHoldTooltip;
+    final concealTooltip = loc.passwordRevealReleaseTooltip;
+
+    return Semantics(
+      button: true,
+      label: loc.passwordRevealControlLabel,
+      hint: revealHint,
+      onLongPressHint: revealHint,
+      child: Tooltip(
+        message: _isObscure ? revealTooltip : concealTooltip,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onLongPressStart: (_) => _setPasswordRevealActive(true),
+          onLongPressEnd: (_) => _setPasswordRevealActive(false),
+          onLongPressCancel: () => _setPasswordRevealActive(false),
+          child: SizedBox.square(
+            dimension: kMinInteractiveDimension,
+            child: Center(
+              child: ExcludeSemantics(
+                child: Icon(
+                  _isObscure
+                      ? Icons.visibility_rounded
+                      : Icons.visibility_off_rounded,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.passwordToEdit != null;
     final loc = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
     final mediaQuery = MediaQuery.of(context);
     final keyboardInset = mediaQuery.viewInsets.bottom;
     final safeBottom = mediaQuery.padding.bottom;
@@ -92,9 +141,9 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            top: AppSpacing.lg,
           ),
           child: Form(
             key: _formKey,
@@ -104,15 +153,12 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                 children: [
                   Text(
                     isEditing ? loc.editPassword : loc.addNewPassword,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   if (isEditing) ...[
                     _buildCredentialPreview(loc),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                   ],
                   DropdownButtonFormField<String>(
                     initialValue: _selectedCategory,
@@ -131,7 +177,7 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                       if (val != null) setState(() => _selectedCategory = val);
                     },
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: _titleController,
                     decoration: InputDecoration(
@@ -145,7 +191,7 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                       if (isEditing) setState(() {});
                     },
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: _usernameController,
                     decoration: InputDecoration(
@@ -159,7 +205,7 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                       if (isEditing) setState(() {});
                     },
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _isObscure,
@@ -170,20 +216,12 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                       suffixIcon: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          IconButton(
-                            icon: Icon(
-                              _isObscure
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                            ),
-                            onPressed: () =>
-                                setState(() => _isObscure = !_isObscure),
-                          ),
+                          _buildPressHoldRevealButton(loc),
                           IconButton(
                             onPressed: _showGeneratorDialog,
                             icon: const Icon(Icons.casino),
                             tooltip: loc.generatePasswordTooltip,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: colorScheme.primary,
                           ),
                         ],
                       ),
@@ -193,15 +231,17 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                       if (isEditing) setState(() {});
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.lg + AppSpacing.xs),
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height:
+                        AppSpacing.giant + AppSpacing.sm + AppSpacing.sm - 6,
                     child: FilledButton.icon(
                       icon: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 220),
                         child: _showSaved
-                            ? const Icon(Icons.check_circle, key: ValueKey('ok'))
+                            ? const Icon(Icons.check_circle,
+                                key: ValueKey('ok'))
                             : Icon(
                                 _isSaving
                                     ? Icons.sync
@@ -220,6 +260,10 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                       ),
                       onPressed: () async {
                         if (_isSaving) return;
+                        final provider = Provider.of<PasswordProvider>(
+                          context,
+                          listen: false,
+                        );
                         setState(() {
                           _isSaving = true;
                           _showSaved = false;
@@ -231,11 +275,6 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                           screen: 'add_password_sheet',
                         );
                         if (_formKey.currentState!.validate()) {
-                          final provider = Provider.of<PasswordProvider>(
-                            context,
-                            listen: false,
-                          );
-
                           if (isEditing) {
                             final updatedPassword = widget.passwordToEdit!;
                             updatedPassword.title = _titleController.text;
@@ -254,7 +293,7 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                               _selectedCategory,
                             );
                           }
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           setState(() {
                             _isSaving = false;
                             _showSaved = true;
@@ -262,10 +301,10 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                           await Future<void>.delayed(
                             const Duration(milliseconds: 380),
                           );
-                          if (!mounted) return;
-                          Navigator.of(this.context).pop();
+                          if (!context.mounted) return;
+                          Navigator.of(context).pop();
                         } else {
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           setState(() {
                             _isSaving = false;
                           });
@@ -273,7 +312,7 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.lg + AppSpacing.xs),
                 ],
               ),
             ),
@@ -284,16 +323,16 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
   }
 
   Widget _buildCredentialPreview(AppLocalizations loc) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final maskedLength =
-        _passwordController.text.length.clamp(6, 16).toInt();
-    final passwordPreview = _isObscure
-        ? '•' * maskedLength
-        : _passwordController.text;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final maskedLength = _passwordController.text.length.clamp(6, 16).toInt();
+    final passwordPreview =
+        _isObscure ? '•' * maskedLength : _passwordController.text;
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius:
+            BorderRadius.circular(AppRadius.medium + AppSpacing.xs / 2),
       ),
       child: Column(
         children: [
@@ -310,6 +349,7 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
               tooltip: loc.usernameEmailLabel,
               icon: const Icon(Icons.copy_rounded),
               onPressed: () {
+                // TODO: Align username clipboard auto-clear policy with password copy settings.
                 _lockFacade.copyUsernameToClipboard(
                   context: context,
                   username: _usernameController.text,
@@ -422,6 +462,9 @@ class _PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
     return AlertDialog(
       title: Text(loc.generatePasswordTitle),
       content: SingleChildScrollView(
@@ -429,29 +472,27 @@ class _PasswordGeneratorDialogState extends State<PasswordGeneratorDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.small),
               ),
               child: SelectableText(
                 _generatedPassword,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: textTheme.titleLarge?.copyWith(
                   fontFamily: 'monospace',
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.lg + AppSpacing.xs),
             Row(
               children: [
                 Text(loc.lengthLabel),
                 Text(
                   "${_length.toInt()}",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: textTheme.labelLarge,
                 ),
               ],
             ),

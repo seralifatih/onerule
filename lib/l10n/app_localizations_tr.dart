@@ -242,6 +242,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get panicPinSet => 'Panik PIN ayarlandı.';
 
   @override
+  String get privacyModeHelperText =>
+      'Gizlilik modu, ana PIN girilene kadar kasayı boş gösterir.';
+
+  @override
   String get biometricAvailable => 'Parmak izi / Face ID kullan';
 
   @override
@@ -324,6 +328,63 @@ class AppLocalizationsTr extends AppLocalizations {
   String get clipboardWillClear => 'Pano 30 saniye içinde temizlenecek.';
 
   @override
+  String get vaultLabel => 'Kasa';
+
+  @override
+  String get privacyModeLabel => 'Gizlilik modu';
+
+  @override
+  String get copiedToClipboard => 'Panoya kopyalandı';
+
+  @override
+  String get usernameCopied => 'Kullanıcı adı kopyalandı';
+
+  @override
+  String get autoLockTitle => 'Otomatik kilit';
+
+  @override
+  String get clipboardSectionTitle => 'Pano';
+
+  @override
+  String get clearClipboardAfterTitle => 'Panoyu temizle';
+
+  @override
+  String get alsoClearUsernameCopiesTitle =>
+      'Kullanıcı adı/e-posta kopyalarını da temizle';
+
+  @override
+  String get offLabel => 'Kapalı';
+
+  @override
+  String get passwordRevealControlLabel => 'Şifre görünürlüğü';
+
+  @override
+  String get passwordRevealHoldHint => 'Şifreyi görmek için basılı tut';
+
+  @override
+  String get passwordRevealHoldTooltip => 'Basılı tut';
+
+  @override
+  String get passwordRevealReleaseTooltip => 'Gizlemek için bırak';
+
+  @override
+  String get clearSearchFiltersLabel => 'Arama ve filtreleri temizle';
+
+  @override
+  String get enableClipboardAutoClearFirstHint =>
+      'Önce pano otomatik temizlemeyi açın';
+
+  @override
+  String secondsShort(int seconds) {
+    return '$seconds sn';
+  }
+
+  @override
+  String minutesShort(int minutes) {
+    return '$minutes dk';
+  }
+
+  @override
   String get confirm => 'Onayla';
 
   @override
@@ -341,4 +402,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get biometricPrompt => 'Giriş yapmak için kimliğinizi doğrulayın';
+
+  @override
+  String get usePinToFinishUnlocking => 'Kilidi tamamlamak için PIN kullanın.';
 }

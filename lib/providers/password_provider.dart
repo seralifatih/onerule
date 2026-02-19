@@ -29,6 +29,11 @@ class PasswordProvider extends ChangeNotifier {
       _isPanicMode ? <PasswordModel>[] : _applyFilters(_passwords);
 
   String get selectedCategory => _selectedCategory;
+  String get searchQuery => _searchQuery;
+  int get totalPasswordsCount => _isPanicMode ? 0 : _passwords.length;
+  bool get hasActiveSearch => _searchQuery.trim().isNotEmpty;
+  bool get hasActiveCategoryFilter => _selectedCategory != 'All';
+  bool get hasActiveRefinement => hasActiveSearch || hasActiveCategoryFilter;
 
   Future<void> init() async {
     await _dbService.init();

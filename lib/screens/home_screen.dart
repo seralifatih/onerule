@@ -8,6 +8,12 @@ import '../services/analytics_service.dart';
 import '../widgets/add_password_sheet.dart';
 import 'settings_screen.dart';
 import '../services/app_facade.dart';
+import '../theme/app_elevation.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_theme.dart';
+
+enum _HomeContentState { loading, emptyVault, noResults, list }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.lockFacade});
@@ -38,9 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<PasswordProvider>();
     final loc = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -59,51 +66,35 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildSearchAndFilters(context, provider),
-          Expanded(
-            child: Selector<PasswordProvider, List<PasswordModel>>(
-              selector: (_, value) => value.passwords,
-              builder: (context, passwords, _) {
-                if (passwords.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.lock_open_rounded,
-                          size: 80,
-                          color: colorScheme.onSurface.withValues(alpha: 0.08),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          loc.noPasswordsFound,
-                          style: TextStyle(
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+      body: Consumer<PasswordProvider>(
+        builder: (context, provider, _) {
+          final passwords = provider.passwords;
+          final contentState = _resolveContentState(
+            provider: provider,
+            visibleItemsCount: passwords.length,
+          );
 
-                return ListView.builder(
-                  itemCount: passwords.length,
-                  padding: const EdgeInsets.only(top: 10, bottom: 100),
-                  itemBuilder: (context, index) {
-                    final password = passwords[index];
-                    return _buildPasswordTile(context, password, provider);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+          return Column(
+            children: [
+              _buildHeaderSection(
+                context: context,
+                provider: provider,
+                visibleItemsCount: passwords.length,
+              ),
+              Expanded(
+                child: _buildContentByState(
+                  context: context,
+                  state: contentState,
+                  provider: provider,
+                  passwords: passwords,
+                ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: SafeArea(
-        minimum: const EdgeInsets.only(bottom: 8),
+        minimum: const EdgeInsets.only(bottom: AppSpacing.sm),
         child: FloatingActionButton.extended(
           onPressed: () {
             _analytics.primaryCtaTap(
@@ -114,10 +105,10 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
-          elevation: 8,
+          elevation: AppElevation.medium,
           label: Text(
             loc.newPassword,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: textTheme.labelLarge,
           ),
           icon: const Icon(Icons.add),
         ),
@@ -125,152 +116,260 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSearchAndFilters(
-    BuildContext context,
-    PasswordProvider provider,
-  ) {
+  _HomeContentState _resolveContentState({
+    required PasswordProvider provider,
+    required int visibleItemsCount,
+  }) {
+    if (provider.isLoading) {
+      return _HomeContentState.loading;
+    }
+    if (provider.hasActiveRefinement && visibleItemsCount == 0) {
+      return _HomeContentState.noResults;
+    }
+    if (provider.totalPasswordsCount == 0) {
+      return _HomeContentState.emptyVault;
+    }
+    return _HomeContentState.list;
+  }
+
+  Widget _buildHeaderSection({
+    required BuildContext context,
+    required PasswordProvider provider,
+    required int visibleItemsCount,
+  }) {
     final loc = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final hasActiveRefinement = provider.hasActiveRefinement;
+    final isPrivacyMode = provider.isPanicMode;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.md + AppSpacing.xs / 2,
+      ),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: theme.scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(color: colorScheme.outlineVariant),
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                loc.searchPasswordsHint,
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(),
-              Selector<PasswordProvider, int>(
-                selector: (_, value) => value.passwords.length,
-                builder: (_, count, __) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '$count',
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
+          _buildVaultStatusIndicator(
+            context: context,
+            isPrivacyMode: isPrivacyMode,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: _searchController,
-            style: TextStyle(color: colorScheme.onSurface),
+            style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
             cursorColor: colorScheme.primary,
             decoration: InputDecoration(
               hintText: loc.searchPasswordsHint,
-              hintStyle: TextStyle(
+              hintStyle: textTheme.bodyLarge?.copyWith(
                 color: colorScheme.onSurface.withValues(alpha: 0.65),
               ),
               prefixIcon: Icon(Icons.search, color: colorScheme.primary),
               filled: true,
               fillColor: colorScheme.surfaceContainerHighest,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppRadius.large),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppRadius.large),
                 borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              suffixIcon: hasActiveRefinement
+                  ? Semantics(
+                      button: true,
+                      label: loc.clearSearchFiltersLabel,
+                      child: IconButton(
+                        tooltip: loc.clearSearchFiltersLabel,
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => _clearSearchAndFilters(provider),
+                      ),
+                    )
+                  : null,
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: AppSpacing.md),
             ),
             onChanged: (query) {
               provider.search(query);
               _analytics.searchQueryChanged(queryLength: query.length);
             },
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Text(
-                'Quick filters',
-                style: TextStyle(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () {
-                  _searchController.clear();
-                  provider.filterByCategory(PasswordCategories.all);
-                  provider.search('');
-                },
-                child: const Text('Clear'),
-              ),
-            ],
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '$visibleItemsCount of ${provider.totalPasswordsCount}',
+            style: textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
+            ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Selector<PasswordProvider, String>(
-              selector: (_, value) => value.selectedCategory,
-              builder: (context, selectedCategory, _) {
-                return Row(
-                  children: PasswordCategories.filterCategories.map((category) {
-                    final isSelected = selectedCategory == category;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: FilterChip(
-                        label: Text(PasswordCategories.labelFor(loc, category)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (!selected) return;
-                          provider.filterByCategory(category);
-                          provider.search(_searchController.text);
-                        },
-                        backgroundColor: colorScheme.surface,
-                        selectedColor: colorScheme.primary.withValues(alpha: 0.2),
-                        checkmarkColor: colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color: isSelected
-                              ? colorScheme.primary
-                              : colorScheme.onSurfaceVariant,
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(
-                            color: isSelected
-                                ? colorScheme.primary
-                                : Colors.transparent,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
+          const SizedBox(height: AppSpacing.sm),
+          _buildFilterRow(context: context, provider: provider, loc: loc),
+        ],
+      ),
+    );
+  }
+
+Widget _buildVaultStatusIndicator({
+  required BuildContext context,
+  required bool isPrivacyMode,
+}) {
+  final colorScheme = Theme.of(context).colorScheme;
+  final textTheme = Theme.of(context).textTheme;
+  final loc = AppLocalizations.of(context)!;
+  final normalLabel = loc.vaultLabel;
+  final privacyModeLabel = loc.privacyModeLabel;
+  final icon =
+      isPrivacyMode ? Icons.shield_rounded : Icons.lock_open_rounded;
+  final label = isPrivacyMode ? privacyModeLabel : normalLabel;
+
+  return Semantics(
+    label: label,
+    readOnly: true,
+    child: ExcludeSemantics(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppRadius.medium),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: AppSpacing.md,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              label,
+              style: textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+  Widget _buildFilterRow({
+    required BuildContext context,
+    required PasswordProvider provider,
+    required AppLocalizations loc,
+  }) {
+    const categories = PasswordCategories.filterCategories;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          ...categories.map(
+            (category) => Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: _buildFilterChip(
+                context: context,
+                loc: loc,
+                category: category,
+                selected: provider.selectedCategory == category,
+                onTap: () => _applyCategoryFilter(provider, category),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildFilterChip({
+    required BuildContext context,
+    required AppLocalizations loc,
+    required String category,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
+    return FilterChip(
+      label: Text(PasswordCategories.labelFor(loc, category)),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      backgroundColor: colorScheme.surface,
+      selectedColor: colorScheme.primary.withValues(alpha: 0.2),
+      checkmarkColor: colorScheme.primary,
+      labelStyle: textTheme.bodyMedium?.copyWith(
+        color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.xlarge - 4),
+        side: BorderSide(
+          color: selected ? colorScheme.primary : Colors.transparent,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContentByState({
+    required BuildContext context,
+    required _HomeContentState state,
+    required PasswordProvider provider,
+    required List<PasswordModel> passwords,
+  }) {
+    switch (state) {
+      case _HomeContentState.loading:
+        return const LoadingState();
+      case _HomeContentState.emptyVault:
+        return EmptyVaultState(
+          onAddItem: () {
+            _analytics.primaryCtaTap(
+              ctaId: 'home_empty_add_item',
+              screen: 'home',
+            );
+            _openAddEditSheet(context, null);
+          },
+        );
+      case _HomeContentState.noResults:
+        return NoResultsState(onClear: () => _clearSearchAndFilters(provider));
+      case _HomeContentState.list:
+        return ListView.builder(
+          itemCount: passwords.length,
+          padding: const EdgeInsets.only(
+            top: AppSpacing.sm + AppSpacing.xs / 2,
+            bottom: AppSpacing.giant + AppSpacing.giant + AppSpacing.lg,
+          ),
+          itemBuilder: (context, index) {
+            final password = passwords[index];
+            return _buildPasswordTile(context, password, provider);
+          },
+        );
+    }
+  }
+
+  void _applyCategoryFilter(PasswordProvider provider, String category) {
+    provider.filterByCategory(category);
+    provider.search(_searchController.text);
+  }
+
+  void _clearSearchAndFilters(PasswordProvider provider) {
+    _searchController.clear();
+    provider.filterByCategory(PasswordCategories.all);
+    provider.search('');
   }
 
   void _openAddEditSheet(BuildContext context, PasswordModel? password) {
@@ -281,7 +380,9 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => Container(
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xlarge),
+          ),
         ),
         child: AddPasswordSheet(passwordToEdit: password),
       ),
@@ -294,30 +395,51 @@ class _HomeScreenState extends State<HomeScreen> {
     PasswordProvider provider,
   ) {
     final loc = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final semanticColors =
+        theme.extension<AppSemanticColors>() ?? AppTheme.fallbackSemanticColors;
+    final media = MediaQuery.of(context);
+    final currentScale = media.textScaler.scale(1.0);
+    final clampedScale = currentScale.clamp(1.0, 1.15).toDouble();
 
     return Dismissible(
       key: Key(password.id),
       direction: DismissDirection.horizontal,
       background: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
-          color: Colors.red.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(16),
+          color: semanticColors.destructive.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(AppRadius.large),
         ),
         alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.only(left: 24),
-        child: const Icon(Icons.delete_forever, color: Colors.white, size: 28),
+        padding: const EdgeInsets.only(left: AppSpacing.xl),
+        child: Icon(
+          Icons.delete_forever,
+          color: colorScheme.onError,
+          size: AppSpacing.xl + AppSpacing.xs,
+        ),
       ),
       secondaryBackground: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(16),
+          color: semanticColors.success.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(AppRadius.large),
         ),
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        child: const Icon(Icons.edit, color: Colors.white, size: 28),
+        padding: const EdgeInsets.only(right: AppSpacing.xl),
+        child: Icon(
+          Icons.edit,
+          color: colorScheme.onPrimary,
+          size: AppSpacing.xl + AppSpacing.xs,
+        ),
       ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
@@ -334,7 +456,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     FilledButton(
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.red.withValues(alpha: 0.8),
+                        backgroundColor:
+                            semanticColors.destructive.withValues(alpha: 0.8),
                       ),
                       onPressed: () => Navigator.pop(ctx, true),
                       child: Text(loc.delete),
@@ -356,121 +479,139 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
       },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colorScheme.outlineVariant, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          leading: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              PasswordCategories.iconFor(password.category),
-              color: colorScheme.primary,
-            ),
+      child: MediaQuery(
+        data: media.copyWith(textScaler: TextScaler.linear(clampedScale)),
+        child: Container(
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
           ),
-          title: Text(
-            password.title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: colorScheme.onSurface,
-            ),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 6),
-              Text(
-                password.username,
-                style: TextStyle(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 13,
-                ),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadius.large),
+            border: Border.all(color: colorScheme.outlineVariant, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.shadow.withValues(alpha: 0.08),
+                blurRadius: AppSpacing.sm,
+                offset: const Offset(0, AppSpacing.xs / 2),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.secondaryContainer.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      PasswordCategories.labelFor(loc, password.category)
-                          .toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSecondaryContainer,
-                      ),
-                    ),
+            ],
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            leading: Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(AppRadius.medium),
+              ),
+              child: Icon(
+                PasswordCategories.iconFor(password.category),
+                color: colorScheme.primary,
+              ),
+            ),
+            title: Text(
+              password.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.titleMedium?.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  password.username,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 8),
-                  if (password.lastModified != null)
-                    Text(
-                      'Updated ${_shortDate(password.lastModified!)}',
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 11,
+                ),
+                const SizedBox(height: AppSpacing.sm - AppSpacing.xs / 2),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer
+                            .withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(AppRadius.small - 2),
+                      ),
+                      child: Text(
+                        PasswordCategories.labelFor(loc, password.category)
+                            .toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSecondaryContainer,
+                        ),
                       ),
                     ),
-                ],
-              ),
-            ],
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.alternate_email_rounded,
-                  color: colorScheme.onSurfaceVariant,
+                    const SizedBox(width: AppSpacing.sm),
+                    if (password.lastModified != null)
+                      Flexible(
+                        child: Text(
+                          'Updated ${_shortDate(password.lastModified!)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                tooltip: loc.usernameEmailLabel,
-                onPressed: () {
-                  _lockFacade.copyUsernameToClipboard(
-                    context: context,
-                    username: password.username,
-                    title: password.title,
-                  );
-                },
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.copy_rounded,
-                  color: colorScheme.onSurfaceVariant,
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  iconSize: 21,
+                  icon: Icon(
+                    Icons.alternate_email_rounded,
+                    size: 21,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  tooltip: loc.usernameEmailLabel,
+                  onPressed: () {
+                    _lockFacade.copyUsernameToClipboard(
+                      context: context,
+                      username: password.username,
+                      title: password.title,
+                    );
+                  },
                 ),
-                tooltip: loc.passwordLabel,
-                onPressed: () {
-                  _lockFacade.copyPasswordToClipboard(
-                    context: context,
-                    password: password.password,
-                    title: password.title,
-                  );
-                },
-              ),
-            ],
+                IconButton(
+                  iconSize: 21,
+                  icon: Icon(
+                    Icons.copy_rounded,
+                    size: 21,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  tooltip: loc.passwordLabel,
+                  onPressed: () {
+                    _lockFacade.copyPasswordToClipboard(
+                      context: context,
+                      password: password.password,
+                      title: password.title,
+                    );
+                  },
+                ),
+              ],
+            ),
+            onTap: () => _openAddEditSheet(context, password),
           ),
-          onTap: () => _openAddEditSheet(context, password),
         ),
       ),
     );
@@ -479,5 +620,130 @@ class _HomeScreenState extends State<HomeScreen> {
   String _shortDate(DateTime value) {
     final local = value.toLocal();
     return '${local.month}/${local.day}/${local.year}';
+  }
+}
+
+class LoadingState extends StatelessWidget {
+  const LoadingState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Loading vault...',
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class EmptyVaultState extends StatelessWidget {
+  const EmptyVaultState({super.key, required this.onAddItem});
+
+  final VoidCallback onAddItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.lock_outline_rounded,
+              size: AppSpacing.giant + AppSpacing.xl,
+              color: colorScheme.onSurface.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              loc.noPasswordsFound,
+              textAlign: TextAlign.center,
+              style: textTheme.titleLarge?.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Your vault is ready. Add your first item when you want.',
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton.icon(
+              onPressed: onAddItem,
+              icon: const Icon(Icons.add),
+              label: const Text('Add item'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class NoResultsState extends StatelessWidget {
+  const NoResultsState({super.key, required this.onClear});
+
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: AppSpacing.giant + AppSpacing.xl,
+              color: colorScheme.onSurface.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'No matches found',
+              style: textTheme.titleLarge?.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Try a different search or reset your filters.',
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextButton(
+              onPressed: onClear,
+              child: const Text('Clear'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

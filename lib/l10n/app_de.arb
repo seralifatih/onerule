@@ -86,6 +86,7 @@
     "enterPanicPin": "Panik-PIN eingeben",
     "panicPinSameAsMaster": "Darf nicht mit der Master-PIN identisch sein",
     "panicPinSet": "Panik-PIN gesetzt.",
+    "privacyModeHelperText": "Privatmodus zeigt leeren Tresor bis zur Entsperrung mit Haupt-PIN.",
     "biometricAvailable": "Fingerabdruck / Face ID verwenden",
     "biometricUnavailable": "Auf diesem Gerät nicht verfügbar",
     "deleteAllTitle": "Sind Sie sicher?",
@@ -125,10 +126,43 @@
     "legacyImportWarningBody": "Dieses JSON-Backup ist unverschlüsselt. Beim Import können Passwörter anderen Apps oder Diensten zugänglich werden. Fahren Sie nur fort, wenn Sie der Datei und der Umgebung vertrauen.",
     "legacyImportConfirm": "Trotzdem importieren",
     "clipboardWillClear": "Zwischenablage wird in 30 Sekunden gelöscht.",
+    "vaultLabel": "Tresor",
+    "privacyModeLabel": "Privatmodus",
+    "copiedToClipboard": "In Zwischenablage kopiert",
+    "usernameCopied": "Benutzername kopiert",
+    "autoLockTitle": "Auto-Sperre",
+    "clipboardSectionTitle": "Zwischenablage",
+    "clearClipboardAfterTitle": "Zwischenablage leeren nach",
+    "alsoClearUsernameCopiesTitle": "Benutzername/E-Mail-Kopien auch löschen",
+    "offLabel": "Aus",
+    "passwordRevealControlLabel": "Passwortsichtbarkeit",
+    "passwordRevealHoldHint": "Zum Anzeigen gedrückt halten",
+    "passwordRevealHoldTooltip": "Gedrückt halten",
+    "passwordRevealReleaseTooltip": "Zum Verbergen loslassen",
+    "clearSearchFiltersLabel": "Suche und Filter löschen",
+    "enableClipboardAutoClearFirstHint": "Zuerst Auto-Leeren aktivieren",
+    "secondsShort": "{seconds} s",
+    "@secondsShort": {
+        "placeholders": {
+            "seconds": {
+                "type": "int"
+            }
+        }
+    },
+    "minutesShort": "{minutes} min",
+    "@minutesShort": {
+        "placeholders": {
+            "minutes": {
+                "type": "int"
+            }
+        }
+    },
     "confirm": "Bestätigen",
     "initErrorTitle": "Initialisierung fehlgeschlagen",
     "initErrorBody": "Der Tresor konnte nicht entsperrt werden. Sie können es erneut versuchen oder zum Login wechseln.",
     "retry": "Erneut versuchen",
     "goToLogin": "Zum Login",
-    "biometricPrompt": "Bitte bestätigen Sie Ihre Identität zur Anmeldung"
+    "biometricPrompt": "Bitte bestätigen Sie Ihre Identität zur Anmeldung",
+    "usePinToFinishUnlocking": "Zum Entsperren bitte PIN verwenden."
 }
+

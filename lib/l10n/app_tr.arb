@@ -86,6 +86,7 @@
     "enterPanicPin": "Panik PIN Girin",
     "panicPinSameAsMaster": "Ana PIN ile aynı olamaz",
     "panicPinSet": "Panik PIN ayarlandı.",
+    "privacyModeHelperText": "Gizlilik modu, ana PIN girilene kadar kasayı boş gösterir.",
     "biometricAvailable": "Parmak izi / Face ID kullan",
     "biometricUnavailable": "Bu cihazda kullanılmıyor",
     "deleteAllTitle": "Emin misiniz?",
@@ -125,10 +126,43 @@
     "legacyImportWarningBody": "Bu JSON yedeği şifrelenmemiştir. İçe aktarma sırasında şifreleriniz diğer uygulamalara veya servislerine açılabilir. Yalnızca dosyaya ve ortama güveniyorsanız devam edin.",
     "legacyImportConfirm": "Yine de içe aktar",
     "clipboardWillClear": "Pano 30 saniye içinde temizlenecek.",
+    "vaultLabel": "Kasa",
+    "privacyModeLabel": "Gizlilik modu",
+    "copiedToClipboard": "Panoya kopyalandı",
+    "usernameCopied": "Kullanıcı adı kopyalandı",
+    "autoLockTitle": "Otomatik kilit",
+    "clipboardSectionTitle": "Pano",
+    "clearClipboardAfterTitle": "Panoyu temizle",
+    "alsoClearUsernameCopiesTitle": "Kullanıcı adı/e-posta kopyalarını da temizle",
+    "offLabel": "Kapalı",
+    "passwordRevealControlLabel": "Şifre görünürlüğü",
+    "passwordRevealHoldHint": "Şifreyi görmek için basılı tut",
+    "passwordRevealHoldTooltip": "Basılı tut",
+    "passwordRevealReleaseTooltip": "Gizlemek için bırak",
+    "clearSearchFiltersLabel": "Arama ve filtreleri temizle",
+    "enableClipboardAutoClearFirstHint": "Önce pano otomatik temizlemeyi açın",
+    "secondsShort": "{seconds} sn",
+    "@secondsShort": {
+        "placeholders": {
+            "seconds": {
+                "type": "int"
+            }
+        }
+    },
+    "minutesShort": "{minutes} dk",
+    "@minutesShort": {
+        "placeholders": {
+            "minutes": {
+                "type": "int"
+            }
+        }
+    },
     "confirm": "Onayla",
     "initErrorTitle": "Başlatma başarısız",
     "initErrorBody": "Kasa açılamadı. Yeniden deneyebilir veya giriş ekranına dönebilirsiniz.",
     "retry": "Tekrar dene",
     "goToLogin": "Giriş ekranına git",
-    "biometricPrompt": "Giriş yapmak için kimliğinizi doğrulayın"
+    "biometricPrompt": "Giriş yapmak için kimliğinizi doğrulayın",
+    "usePinToFinishUnlocking": "Kilidi tamamlamak için PIN kullanın."
 }
+

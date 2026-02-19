@@ -246,6 +246,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get panicPinSet => 'Panik-PIN gesetzt.';
 
   @override
+  String get privacyModeHelperText =>
+      'Privatmodus zeigt leeren Tresor bis zur Entsperrung mit Haupt-PIN.';
+
+  @override
   String get biometricAvailable => 'Fingerabdruck / Face ID verwenden';
 
   @override
@@ -330,6 +334,63 @@ class AppLocalizationsDe extends AppLocalizations {
       'Zwischenablage wird in 30 Sekunden gelöscht.';
 
   @override
+  String get vaultLabel => 'Tresor';
+
+  @override
+  String get privacyModeLabel => 'Privatmodus';
+
+  @override
+  String get copiedToClipboard => 'In Zwischenablage kopiert';
+
+  @override
+  String get usernameCopied => 'Benutzername kopiert';
+
+  @override
+  String get autoLockTitle => 'Auto-Sperre';
+
+  @override
+  String get clipboardSectionTitle => 'Zwischenablage';
+
+  @override
+  String get clearClipboardAfterTitle => 'Zwischenablage leeren nach';
+
+  @override
+  String get alsoClearUsernameCopiesTitle =>
+      'Benutzername/E-Mail-Kopien auch löschen';
+
+  @override
+  String get offLabel => 'Aus';
+
+  @override
+  String get passwordRevealControlLabel => 'Passwortsichtbarkeit';
+
+  @override
+  String get passwordRevealHoldHint => 'Zum Anzeigen gedrückt halten';
+
+  @override
+  String get passwordRevealHoldTooltip => 'Gedrückt halten';
+
+  @override
+  String get passwordRevealReleaseTooltip => 'Zum Verbergen loslassen';
+
+  @override
+  String get clearSearchFiltersLabel => 'Suche und Filter löschen';
+
+  @override
+  String get enableClipboardAutoClearFirstHint =>
+      'Zuerst Auto-Leeren aktivieren';
+
+  @override
+  String secondsShort(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String minutesShort(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
   String get confirm => 'Bestätigen';
 
   @override
@@ -348,4 +409,7 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get biometricPrompt =>
       'Bitte bestätigen Sie Ihre Identität zur Anmeldung';
+
+  @override
+  String get usePinToFinishUnlocking => 'Zum Entsperren bitte PIN verwenden.';
 }

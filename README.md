@@ -1,86 +1,133 @@
-# 🛡️ OneRule - Offline-First & Secure Password Manager
+# 🔐 OneRule
 
-OneRule is a secure, modern, and completely offline password manager built with Flutter. Your data never leaves your device.
+**OneRule is a 100% offline, zero-knowledge password manager for Android, built to protect your secrets with uncompromising privacy.**
 
-![Flutter](https://img.shields.io/badge/Flutter-3.x-blue?style=flat&logo=flutter)
-![Security](https://img.shields.io/badge/Security-AES--256-green)
-![Platform](https://img.shields.io/badge/Platform-Android-lightgrey)
-![License](https://img.shields.io/badge/License-MIT-purple)
+[![License](https://img.shields.io/badge/License-[Insert%20License]-blue.svg)](./LICENSE)
+[![Google Play](https://img.shields.io/badge/Google%20Play-Coming%20Soon-34A853?logo=googleplay&logoColor=white)]([Insert-Google-Play-Link])
+[![Build Status](https://img.shields.io/badge/Build-[Insert%20Status]-orange.svg)]([Insert-CI-Link])
 
-## 🚀 Features
+---
 
-* **100% Offline:** The app requests NO internet permission (`android.permission.INTERNET`). Your data is never sent to the cloud.
-* **Military-Grade Encryption:** All data is encrypted with **AES-256** standard within the Hive database.
-* **Master PIN & Biometric Login:** Quick and secure access via a 6-digit Master PIN or fingerprint/face ID.
-* **🚨 Panic Mode:** Set a specific "Panic PIN". If entered under duress, the vault appears empty to protect your real data.
-* **Secure Storage:** Encryption keys are derived using PBKDF2 and stored securely within the device's hardware-backed Keystore (`flutter_secure_storage`).
-* **Screen Shield:** Prevents screenshots and blurs the app content when in the background or multitasking view.
-* **Backup & Restore:** Securely export your encrypted database to a JSON file and transfer it to another device.
-* **Categorization:** Organize your passwords into categories like Work, Social, Finance, etc.
-* **Multi-Language Support:** Available in English 🇺🇸, Turkish 🇹🇷, and German 🇩🇪.
+## ✨ Core Features
 
-## 🛠️ Tech Stack
+- **100% Offline by Design**  
+  OneRule is designed to work fully offline and should require **no internet permission**.
+- **Zero-Knowledge Security Model**  
+  Your vault is encrypted locally. Only you hold the credentials needed to unlock it.
+- **Strong Local Encryption**  
+  Sensitive data is protected at rest using modern cryptographic primitives.
+- **Privacy First**  
+  No cloud sync, no remote telemetry by default, no third-party data processing of your vault contents.
 
-* **Framework:** Flutter (Dart)
-* **State Management:** Provider
-* **Database:** Hive (AES-256 Encrypted Box)
-* **Security:**
-    * `flutter_secure_storage`: Secure storage for sensitive keys.
-    * `local_auth`: Biometric authentication.
-    * `cryptography`: PBKDF2 key derivation and secure random number generation.
-    * `screen_protector`: Prevention of data leakage via screenshots/screen recording.
-* **Architecture:** Facade Pattern (Clean separation of UI and Business Logic).
-
-## 🔒 Security Architecture
-
-OneRule takes security seriously:
-
-1.  **Key Derivation:** Your Master PIN is combined with a random Salt and passed through **PBKDF2** (200,000 iterations) to derive the encryption key.
-2.  **Memory Hygiene:** Sensitive data (like PINs and passwords) are cleared from memory (`RAM`) immediately after use.
-3.  **Leakage Prevention:** Android's `allowBackup="false"` is set to prevent ADB backups and automatic Google Drive backups of the encrypted container.
-
+---
 
 ## 📸 Screenshots
 
-| Vault (Home) | Settings | Generate Password
-| :---: | :---: | :---: |
-| <img src="assets/screenshots/2.jpeg" width="200" /> | <img src="assets/screenshots/1.jpeg" width="200" /> | <img src="assets/screenshots/5.jpeg" width="200" /> |
+> Add 2-3 high-quality screenshots of the app UI below.
 
+| Vault | Add / Edit Entry | Settings / Security |
+|---|---|---|
+| ![Vault Screenshot](./docs/screenshots/vault-placeholder.png) | ![Add Entry Screenshot](./docs/screenshots/add-entry-placeholder.png) | ![Settings Screenshot](./docs/screenshots/settings-placeholder.png) |
 
-## 🏁 Installation & Running
+---
 
-To run the project locally:
+## 🛡️ Security Architecture
 
-1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/yourusername/onerule.git](https://github.com/yourusername/onerule.git)
-    cd onerule
-    ```
+OneRule follows a local-first security architecture where all critical operations happen on-device.
 
-2.  **Install dependencies:**
-    ```bash
-    flutter pub get
-    ```
+1. **Master Secret Handling**  
+   The user provides a master password/PIN, which is transformed using **[Insert KDF, e.g., Argon2id / PBKDF2]** with **[Insert Salt Strategy]**.
+2. **Vault Encryption**  
+   Vault records are encrypted locally using **[Insert Encryption Method, e.g., AES-256-GCM / ChaCha20-Poly1305]**.
+3. **Integrity Protection**  
+   Data tampering is detected using **[Insert Integrity Mechanism, e.g., AEAD tag / HMAC-SHA256]**.
+4. **Key Storage Boundary**  
+   Encryption material is stored using **[Insert Secure Storage Method, e.g., Android Keystore / EncryptedSharedPreferences]** where applicable.
+5. **Zero-Transmission Principle**  
+   Secrets are never transmitted to external servers by default.
 
-3.  **Generate Localization files:**
-    ```bash
-    flutter gen-l10n
-    ```
+> Important: Fill in all placeholders before final public release so security claims are fully auditable.
 
-4.  **Run the app:**
-    ```bash
-    flutter run
-    ```
+---
 
-## ⚠️ Important Notes
+## 🧪 Build From Source (Android Studio)
 
-* **Never Forget Your Master PIN:** Since your data is encrypted using this PIN, if you forget it, **no one** (including us) can recover your data.
-* **Panic Mode:** If you set a Panic PIN in settings, entering this PIN at login will unlock a decoy vault (empty), keeping your actual data hidden.
+Privacy-conscious users can build OneRule locally and verify behavior themselves.
+
+### Prerequisites
+
+- Android Studio (latest stable)
+- Android SDK + platform tools
+- [If applicable] Flutter SDK: **[Insert Required Version]**
+- Git
+
+### Steps
+
+1. **Clone the repository**
+   ```bash
+   git clone [Insert-Repo-URL]
+   cd onerule
+   ```
+2. **Install dependencies**
+   ```bash
+   flutter pub get
+   ```
+3. **(Optional) Generate localization/resources**
+   ```bash
+   flutter gen-l10n
+   ```
+4. **Open in Android Studio**
+   - Open the project folder.
+   - Let Gradle/SDK indexing complete.
+5. **Run on device/emulator**
+   ```bash
+   flutter run
+   ```
+6. **Build release artifact**
+   ```bash
+   flutter build apk --release
+   ```
+
+---
+
+## 🧰 Tech Stack
+
+> Replace placeholders with your final stack.
+
+- **Language:** [Kotlin / Dart]
+- **UI:** [Jetpack Compose / Flutter]
+- **Local Database:** [Room / Hive / SQLCipher]
+- **State Management:** [Insert State Management]
+- **Crypto & Secure Storage:** [Insert Security Libraries]
+- **Architecture:** [Insert Architecture Pattern]
+
+---
 
 ## 🤝 Contributing
 
-Bug reports and Pull Requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome via Pull Requests.
 
-## 📄 License
+1. Fork the repository.
+2. Create a feature branch.
+3. Make focused, testable changes.
+4. Open a Pull Request with clear context and screenshots (if UI-related).
 
-This project is licensed under the [MIT](LICENSE) License.
+Please keep PRs small and security-aware.
+
+### 🔒 Security Policy
+
+If you discover a security vulnerability, **do not open a public GitHub issue**.
+
+Report it privately via email: **[security@fisoftware.com]**  
+Alternative contact: **[Insert Security Contact Email]**
+
+We will investigate and coordinate responsible disclosure.
+
+---
+
+## 📄 License & Copyright
+
+**Copyright © 2026 FI Software.**  
+Licensed under **[Insert License, e.g., GPLv3 / MIT / Apache-2.0]**.
+
+See [`LICENSE`](./LICENSE) for full terms.

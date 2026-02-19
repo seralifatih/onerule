@@ -556,6 +556,12 @@ abstract class AppLocalizations {
   /// **'Panic PIN set.'**
   String get panicPinSet;
 
+  /// No description provided for @privacyModeHelperText.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy mode shows an empty vault until main PIN unlock.'**
+  String get privacyModeHelperText;
+
   /// No description provided for @biometricAvailable.
   ///
   /// In en, this message translates to:
@@ -700,6 +706,108 @@ abstract class AppLocalizations {
   /// **'Clipboard will clear in 30 seconds.'**
   String get clipboardWillClear;
 
+  /// No description provided for @vaultLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault'**
+  String get vaultLabel;
+
+  /// No description provided for @privacyModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy mode'**
+  String get privacyModeLabel;
+
+  /// No description provided for @copiedToClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get copiedToClipboard;
+
+  /// No description provided for @usernameCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Username copied'**
+  String get usernameCopied;
+
+  /// No description provided for @autoLockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-lock'**
+  String get autoLockTitle;
+
+  /// No description provided for @clipboardSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clipboard'**
+  String get clipboardSectionTitle;
+
+  /// No description provided for @clearClipboardAfterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear clipboard after'**
+  String get clearClipboardAfterTitle;
+
+  /// No description provided for @alsoClearUsernameCopiesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Also clear username/email copies'**
+  String get alsoClearUsernameCopiesTitle;
+
+  /// No description provided for @offLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get offLabel;
+
+  /// No description provided for @passwordRevealControlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password visibility'**
+  String get passwordRevealControlLabel;
+
+  /// No description provided for @passwordRevealHoldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Press and hold to reveal password'**
+  String get passwordRevealHoldHint;
+
+  /// No description provided for @passwordRevealHoldTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to reveal'**
+  String get passwordRevealHoldTooltip;
+
+  /// No description provided for @passwordRevealReleaseTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Release to hide'**
+  String get passwordRevealReleaseTooltip;
+
+  /// No description provided for @clearSearchFiltersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search and filters'**
+  String get clearSearchFiltersLabel;
+
+  /// No description provided for @enableClipboardAutoClearFirstHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable clipboard auto-clear first'**
+  String get enableClipboardAutoClearFirstHint;
+
+  /// No description provided for @secondsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} sec'**
+  String secondsShort(int seconds);
+
+  /// No description provided for @minutesShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String minutesShort(int minutes);
+
   /// No description provided for @confirm.
   ///
   /// In en, this message translates to:
@@ -735,6 +843,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Verify your identity to sign in'**
   String get biometricPrompt;
+
+  /// No description provided for @usePinToFinishUnlocking.
+  ///
+  /// In en, this message translates to:
+  /// **'Use PIN to finish unlocking.'**
+  String get usePinToFinishUnlocking;
 }
 
 class _AppLocalizationsDelegate

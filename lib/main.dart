@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:screen_protector/screen_protector.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 
@@ -11,9 +10,11 @@ import 'models/password_model.dart';
 import 'providers/password_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/language_provider.dart';
+import 'providers/security_settings_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/app_facade.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +46,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PasswordProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => SecuritySettingsProvider()),
       ],
       child: const MyApp(),
     ),
@@ -75,79 +77,8 @@ class MyApp extends StatelessWidget {
 
       themeMode: themeProvider.themeMode,
 
-      // 🌞 Light Theme
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-        colorScheme: const ColorScheme.light(
-          primary: Color(0xFF0284C7),
-          secondary: Color(0xFF6366F1),
-          surface: Colors.white,
-          onSurface: Color(0xFF1E293B),
-        ),
-        textTheme: GoogleFonts.poppinsTextTheme(),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0F172A),
-          ),
-          iconTheme: IconThemeData(color: Color(0xFF0F172A)),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF0284C7), width: 2),
-          ),
-        ),
-      ),
-
-      // 🌙 Dark Theme
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF38BDF8),
-          secondary: Color(0xFF818CF8),
-          surface: Color(0xFF1E293B),
-          onSurface: Colors.white,
-        ),
-        textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-          iconTheme: IconThemeData(color: Colors.white),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFF1E293B),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 2),
-          ),
-        ),
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
 
       home: const LifecycleManager(child: LoginScreen()),
     );
@@ -166,7 +97,6 @@ class LifecycleManager extends StatefulWidget {
 class _LifecycleManagerState extends State<LifecycleManager>
     with WidgetsBindingObserver {
   DateTime? _lastPausedTime;
-  final int _lockTimeoutSeconds = 60; // 60 saniye sonra kilitler
   final LockFacade _lockFacade = LockFacade();
 
   @override
@@ -193,9 +123,11 @@ class _LifecycleManagerState extends State<LifecycleManager>
     if (state == AppLifecycleState.paused) {
       _lastPausedTime = DateTime.now();
     } else if (state == AppLifecycleState.resumed && _lastPausedTime != null) {
+      final timeoutSeconds =
+          context.read<SecuritySettingsProvider>().autoLockTimeoutSeconds;
       final diff = DateTime.now().difference(_lastPausedTime!);
       // Eğer süre aşılmışsa Login ekranına at
-      if (diff.inSeconds > _lockTimeoutSeconds) {
+      if (diff.inSeconds > timeoutSeconds) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
           (_) => false,
@@ -290,3 +222,4 @@ class _InitializationScreenState extends State<InitializationScreen> {
 }
 
 enum _InitErrorAction { retry, goToLogin }
+

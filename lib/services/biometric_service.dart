@@ -2,10 +2,37 @@ import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:local_auth/error_codes.dart' as auth_error;
 
+class BiometricAuthResult {
+  const BiometricAuthResult({
+    required this.authenticated,
+    this.errorType,
+  });
+
+  final bool authenticated;
+  final String? errorType;
+}
+
 class BiometricService {
   final LocalAuthentication _auth = LocalAuthentication();
 
-  // Cihazda biyometrik donanım var mı?
+  Future<bool> canCheckBiometrics() async {
+    try {
+      return await _auth.canCheckBiometrics;
+    } on PlatformException catch (_) {
+      return false;
+    }
+  }
+
+  Future<List<String>> availableBiometrics() async {
+    try {
+      final types = await _auth.getAvailableBiometrics();
+      return types.map((type) => type.name).toList(growable: false);
+    } on PlatformException catch (_) {
+      return const <String>[];
+    }
+  }
+
+  // Is biometric hardware available on device?
   Future<bool> isBiometricsAvailable() async {
     try {
       final bool canAuthenticateWithBiometrics = await _auth.canCheckBiometrics;
@@ -17,22 +44,40 @@ class BiometricService {
     }
   }
 
-  // Parmak izi/Yüz taraması yap
-  Future<bool> authenticate({required String localizedReason}) async {
+  Future<BiometricAuthResult> authenticateDetailed({
+    required String localizedReason,
+  }) async {
     try {
-      return await _auth.authenticate(
+      final authenticated = await _auth.authenticate(
         localizedReason: localizedReason,
         options: const AuthenticationOptions(
-          stickyAuth: true, // Uygulama alta atılsa bile işlem devam etsin
-          biometricOnly: true, // Sadece biyometrik, cihaz PIN/Pattern yok
+          stickyAuth: true,
+          biometricOnly: true,
         ),
       );
+      return BiometricAuthResult(authenticated: authenticated);
     } on PlatformException catch (e) {
       if (e.code == auth_error.notAvailable) {
-        // Biyometrik yok
-        return false;
+        return const BiometricAuthResult(
+          authenticated: false,
+          errorType: 'PlatformException:notAvailable',
+        );
       }
-      return false;
+      return BiometricAuthResult(
+        authenticated: false,
+        errorType: 'PlatformException:${e.code}',
+      );
+    } catch (e) {
+      return BiometricAuthResult(
+        authenticated: false,
+        errorType: e.runtimeType.toString(),
+      );
     }
+  }
+
+  // Do fingerprint/face auth
+  Future<bool> authenticate({required String localizedReason}) async {
+    final result = await authenticateDetailed(localizedReason: localizedReason);
+    return result.authenticated;
   }
 }

@@ -33,9 +33,13 @@ class _FakeDatabaseService extends DatabaseService {
 }
 
 class _FakeAuthFacade extends AuthFacade {
-  _FakeAuthFacade({required this.biometricOutcome});
+  _FakeAuthFacade({
+    required this.biometricOutcome,
+    this.biometricsAvailable = true,
+  });
 
   final BiometricUnlockOutcome biometricOutcome;
+  final bool biometricsAvailable;
 
   int biometricAttempts = 0;
   int pinLogins = 0;
@@ -45,6 +49,16 @@ class _FakeAuthFacade extends AuthFacade {
 
   @override
   Future<bool> isBiometricEnabled() async => true;
+
+  @override
+  Future<bool> isBiometricsAvailable() async => biometricsAvailable;
+
+  @override
+  Future<bool> canCheckBiometrics() async => biometricsAvailable;
+
+  @override
+  Future<List<String>> availableBiometrics() async =>
+      biometricsAvailable ? <String>['fingerprint'] : const <String>[];
 
   @override
   Future<BiometricUnlockOutcome> attemptBiometricUnlock({
@@ -101,11 +115,12 @@ void main() {
     await tester.pumpWidget(_buildApp(auth, observer));
     await tester.pump();
     await tester.pump();
+    await tester.pump();
 
     expect(auth.biometricAttempts, 1);
     expect(auth.pinLogins, 0);
     expect(observer.replaceCount, greaterThanOrEqualTo(1));
-    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Search passwords...'), findsOneWidget);
   });
 
   testWidgets('biometric failure path falls back to PIN prompt', (
@@ -117,7 +132,9 @@ void main() {
     final observer = _NavigatorSpy();
 
     await tester.pumpWidget(_buildApp(auth, observer));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
 
     expect(auth.biometricAttempts, 1);
     expect(observer.replaceCount, 0);
@@ -129,13 +146,16 @@ void main() {
   ) async {
     final auth = _FakeAuthFacade(
       biometricOutcome: BiometricUnlockOutcome.unavailable,
+      biometricsAvailable: false,
     );
     final observer = _NavigatorSpy();
 
     await tester.pumpWidget(_buildApp(auth, observer));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
 
-    expect(auth.biometricAttempts, 1);
+    expect(auth.biometricAttempts, 0);
     expect(observer.replaceCount, 0);
     expect(find.byType(TextField), findsOneWidget);
   });

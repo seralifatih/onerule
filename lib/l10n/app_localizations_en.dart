@@ -242,6 +242,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get panicPinSet => 'Panic PIN set.';
 
   @override
+  String get privacyModeHelperText =>
+      'Privacy mode shows an empty vault until main PIN unlock.';
+
+  @override
   String get biometricAvailable => 'Use Fingerprint / Face ID';
 
   @override
@@ -324,6 +328,62 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clipboardWillClear => 'Clipboard will clear in 30 seconds.';
 
   @override
+  String get vaultLabel => 'Vault';
+
+  @override
+  String get privacyModeLabel => 'Privacy mode';
+
+  @override
+  String get copiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String get usernameCopied => 'Username copied';
+
+  @override
+  String get autoLockTitle => 'Auto-lock';
+
+  @override
+  String get clipboardSectionTitle => 'Clipboard';
+
+  @override
+  String get clearClipboardAfterTitle => 'Clear clipboard after';
+
+  @override
+  String get alsoClearUsernameCopiesTitle => 'Also clear username/email copies';
+
+  @override
+  String get offLabel => 'Off';
+
+  @override
+  String get passwordRevealControlLabel => 'Password visibility';
+
+  @override
+  String get passwordRevealHoldHint => 'Press and hold to reveal password';
+
+  @override
+  String get passwordRevealHoldTooltip => 'Hold to reveal';
+
+  @override
+  String get passwordRevealReleaseTooltip => 'Release to hide';
+
+  @override
+  String get clearSearchFiltersLabel => 'Clear search and filters';
+
+  @override
+  String get enableClipboardAutoClearFirstHint =>
+      'Enable clipboard auto-clear first';
+
+  @override
+  String secondsShort(int seconds) {
+    return '$seconds sec';
+  }
+
+  @override
+  String minutesShort(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
   String get confirm => 'Confirm';
 
   @override
@@ -341,4 +401,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get biometricPrompt => 'Verify your identity to sign in';
+
+  @override
+  String get usePinToFinishUnlocking => 'Use PIN to finish unlocking.';
 }

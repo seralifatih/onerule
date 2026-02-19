@@ -86,6 +86,7 @@
     "enterPanicPin": "Enter Panic PIN",
     "panicPinSameAsMaster": "Cannot be same as Master PIN",
     "panicPinSet": "Panic PIN set.",
+    "privacyModeHelperText": "Privacy mode shows an empty vault until main PIN unlock.",
     "biometricAvailable": "Use Fingerprint / Face ID",
     "biometricUnavailable": "Not available on this device",
     "deleteAllTitle": "Are you sure?",
@@ -125,10 +126,44 @@
     "legacyImportWarningBody": "This JSON backup is unencrypted. Importing it may expose your passwords to other apps or services. Continue only if you trust the file and environment.",
     "legacyImportConfirm": "Import anyway",
     "clipboardWillClear": "Clipboard will clear in 30 seconds.",
+    "vaultLabel": "Vault",
+    "privacyModeLabel": "Privacy mode",
+    "copiedToClipboard": "Copied to clipboard",
+    "usernameCopied": "Username copied",
+    "autoLockTitle": "Auto-lock",
+    "clipboardSectionTitle": "Clipboard",
+    "clearClipboardAfterTitle": "Clear clipboard after",
+    "alsoClearUsernameCopiesTitle": "Also clear username/email copies",
+    "offLabel": "Off",
+    "passwordRevealControlLabel": "Password visibility",
+    "passwordRevealHoldHint": "Press and hold to reveal password",
+    "passwordRevealHoldTooltip": "Hold to reveal",
+    "passwordRevealReleaseTooltip": "Release to hide",
+    "clearSearchFiltersLabel": "Clear search and filters",
+    "enableClipboardAutoClearFirstHint": "Enable clipboard auto-clear first",
+    "secondsShort": "{seconds} sec",
+    "@secondsShort": {
+        "placeholders": {
+            "seconds": {
+                "type": "int"
+            }
+        }
+    },
+    "minutesShort": "{minutes} min",
+    "@minutesShort": {
+        "placeholders": {
+            "minutes": {
+                "type": "int"
+            }
+        }
+    },
     "confirm": "Confirm",
     "initErrorTitle": "Initialization failed",
     "initErrorBody": "We couldn't unlock your vault. You can retry or go to the login screen.",
     "retry": "Retry",
     "goToLogin": "Go to Login",
-    "biometricPrompt": "Verify your identity to sign in"
+    "biometricPrompt": "Verify your identity to sign in",
+    "usePinToFinishUnlocking": "Use PIN to finish unlocking."
 }
+
+

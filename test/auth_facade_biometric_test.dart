@@ -49,6 +49,14 @@ class _FakeBiometricService extends BiometricService {
     authenticateCalls += 1;
     return authenticated;
   }
+
+  @override
+  Future<BiometricAuthResult> authenticateDetailed({
+    required String localizedReason,
+  }) async {
+    authenticateCalls += 1;
+    return BiometricAuthResult(authenticated: authenticated);
+  }
 }
 
 class _FakeSecureStorageService extends SecureStorageService {
@@ -109,6 +117,24 @@ void main() {
     expect(outcome, BiometricUnlockOutcome.failedOrCanceled);
     expect(biometrics.authenticateCalls, 1);
     expect(storage.restoreCalls, 0);
+  });
+
+  test('attemptBiometricUnlock restore failure returns explicit outcome', () async {
+    final storage = _FakeSecureStorageService(canRestoreSessionKey: false);
+    final biometrics =
+        _FakeBiometricService(available: true, authenticated: true);
+    final facade =
+        AuthFacade(storageService: storage, biometricService: biometrics);
+    final provider = PasswordProvider(dbService: _FakeDatabaseService());
+
+    final outcome = await facade.attemptBiometricUnlock(
+      provider: provider,
+      localizedReason: 'test',
+    );
+
+    expect(outcome, BiometricUnlockOutcome.successButRestoreFailed);
+    expect(biometrics.authenticateCalls, 1);
+    expect(storage.restoreCalls, 1);
   });
 
   test('attemptBiometricUnlock unavailable returns fallback outcome', () async {
