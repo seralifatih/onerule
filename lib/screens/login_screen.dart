@@ -212,9 +212,9 @@ class _LoginScreenState extends State<LoginScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final pinTextStyle = (textTheme.displayLarge ??
-            textTheme.headlineMedium ??
-            const TextStyle(fontSize: 32, fontWeight: FontWeight.w700))
+    final pinTextStyle = (textTheme.headlineSmall ??
+            textTheme.titleLarge ??
+            const TextStyle(fontSize: 26, fontWeight: FontWeight.w700))
         .copyWith(
       letterSpacing: AppSpacing.sm + AppSpacing.xs / 2,
       color: colorScheme.onPrimary,
@@ -313,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       fillColor: colorScheme.onPrimary.withValues(alpha: 0.12),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.md,
-                        vertical: AppSpacing.md,
+                        vertical: AppSpacing.sm + AppSpacing.xs / 2,
                       ),
                       errorText:
                           _errorMessage.isNotEmpty ? _errorMessage : null,

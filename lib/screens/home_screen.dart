@@ -51,7 +51,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Icon(
+          Icons.lock_rounded,
+          color: colorScheme.onSurface,
+        ),
         title: Text(loc.myVaultTitle),
+        iconTheme: IconThemeData(color: colorScheme.onSurface),
+        actionsIconTheme: IconThemeData(color: colorScheme.onSurface),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -576,14 +582,10 @@ Widget _buildVaultStatusIndicator({
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  iconSize: 21,
-                  icon: Icon(
-                    Icons.alternate_email_rounded,
-                    size: 21,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  tooltip: loc.usernameEmailLabel,
+                _buildCopyActionButton(
+                  context: context,
+                  icon: Icons.person_outline,
+                  tooltip: 'Copy username',
                   onPressed: () {
                     _lockFacade.copyUsernameToClipboard(
                       context: context,
@@ -592,14 +594,11 @@ Widget _buildVaultStatusIndicator({
                     );
                   },
                 ),
-                IconButton(
-                  iconSize: 21,
-                  icon: Icon(
-                    Icons.copy_rounded,
-                    size: 21,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  tooltip: loc.passwordLabel,
+                const SizedBox(width: AppSpacing.xs),
+                _buildCopyActionButton(
+                  context: context,
+                  icon: Icons.key_outlined,
+                  tooltip: 'Copy password',
                   onPressed: () {
                     _lockFacade.copyPasswordToClipboard(
                       context: context,
@@ -612,6 +611,34 @@ Widget _buildVaultStatusIndicator({
             ),
             onTap: () => _openAddEditSheet(context, password),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCopyActionButton({
+    required BuildContext context,
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.medium),
+      ),
+      child: IconButton(
+        padding: const EdgeInsets.all(AppSpacing.xs),
+        iconSize: 21,
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(
+          icon,
+          size: 21,
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
     );

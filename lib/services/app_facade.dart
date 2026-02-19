@@ -228,13 +228,12 @@ class LockFacade {
     required String password,
     required String title,
   }) {
-    final loc = AppLocalizations.of(context)!;
     final settings = context.read<SecuritySettingsProvider>();
     final secs = settings.clipboardAutoClearSeconds;
     _copyToClipboard(
       context: context,
       value: password,
-      copiedMessage: loc.copiedToClipboard,
+      copiedMessage: 'Password copied (clears in 30s)',
       autoClear: secs > 0,
       clearDuration: Duration(seconds: secs),
     );
@@ -245,14 +244,13 @@ class LockFacade {
     required String username,
     required String title,
   }) {
-    final loc = AppLocalizations.of(context)!;
     final settings = context.read<SecuritySettingsProvider>();
     final secs = settings.clipboardAutoClearSeconds;
     final clearUser = settings.applyClipboardPolicyToUsername;
     _copyToClipboard(
       context: context,
       value: username,
-      copiedMessage: loc.usernameCopied,
+      copiedMessage: 'Username copied',
       autoClear: secs > 0 && clearUser,
       clearDuration: Duration(seconds: secs),
     );
@@ -265,8 +263,6 @@ class LockFacade {
     required bool autoClear,
     required Duration clearDuration,
   }) async {
-    final loc = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
     await Clipboard.setData(ClipboardData(text: value));
     _lastCopiedText = value;
 
@@ -280,10 +276,12 @@ class LockFacade {
       });
     }
 
-    final message =
-        autoClear ? '$copiedMessage ${loc.clipboardWillClear}' : copiedMessage;
-
     if (!context.mounted) return;
+    _showCopySnackBar(context, copiedMessage);
+  }
+
+  void _showCopySnackBar(BuildContext context, String message) {
+    final theme = Theme.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
