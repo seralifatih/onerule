@@ -1,18 +1,16 @@
 ﻿# 🔐 OneRule
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 **OneRule is a 100% offline, zero-knowledge password manager for Android, built to protect your secrets with uncompromising privacy.**
 
-[![License](https://img.shields.io/badge/License-[Insert%20License]-blue.svg)](./LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Google Play](https://img.shields.io/badge/Google%20Play-Available%20Now-34A853?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.fidevelopment.onerule)
-[![Build Status](https://img.shields.io/badge/Build-[Insert%20Status]-orange.svg)]([Insert-CI-Link])
 
 ---
 
 ## ✨ Core Features
 
 - **100% Offline by Design**  
-  OneRule is designed to work fully offline and should require **no internet permission**.
+  OneRule is designed to work fully offline and does not rely on backend services for vault operations.
 - **Zero-Knowledge Security Model**  
   Your vault is encrypted locally. Only you hold the credentials needed to unlock it.
 - **Strong Local Encryption**  
@@ -49,17 +47,17 @@ https://seralifatih.github.io/OneRuleWeb/
 OneRule follows a local-first security architecture where all critical operations happen on-device.
 
 1. **Master Secret Handling**  
-   The user provides a master password/PIN, which is transformed using **[Insert KDF, e.g., Argon2id / PBKDF2]** with **[Insert Salt Strategy]**.
+   The user provides a master password/PIN, which is transformed using **PBKDF2-HMAC-SHA256 (100,000 iterations, 256-bit output)** with **per-secret 16-byte random salts stored in secure storage (`masterPinSalt`, `hiveSalt`, `panicPinSalt`)**.
 2. **Vault Encryption**  
-   Vault records are encrypted locally using **[Insert Encryption Method, e.g., AES-256-GCM / ChaCha20-Poly1305]**.
+   Vault records are encrypted locally using **HiveAesCipher (AES-256-CBC with PKCS7 padding and a random 16-byte IV)**.
 3. **Integrity Protection**  
-   Data tampering is detected using **[Insert Integrity Mechanism, e.g., AEAD tag / HMAC-SHA256]**.
+   Encrypted backup payload tampering is detected using **AES-GCM authentication tags (`mac`)**. (Vault storage encryption currently uses AES-CBC without a separate AEAD tag.)
 4. **Key Storage Boundary**  
-   Encryption material is stored using **[Insert Secure Storage Method, e.g., Android Keystore / EncryptedSharedPreferences]** where applicable.
+   Encryption material is stored using **Flutter Secure Storage (Android `EncryptedSharedPreferences`, backed by Android Keystore)** where applicable.
 5. **Zero-Transmission Principle**  
    Secrets are never transmitted to external servers by default.
 
-> Important: Fill in all placeholders before final public release so security claims are fully auditable.
+> Security details above reflect the current implementation in this repository.
 
 ---
 
@@ -71,14 +69,14 @@ Privacy-conscious users can build OneRule locally and verify behavior themselves
 
 - Android Studio (latest stable)
 - Android SDK + platform tools
-- [If applicable] Flutter SDK: **[Insert Required Version]**
+- Flutter SDK: **3.38.7 (stable)** (Dart 3.10.7; project constraint `sdk: >=3.2.3 <4.0.0`)
 - Git
 
 ### Steps
 
 1. **Clone the repository**
    ```bash
-   git clone [Insert-Repo-URL]
+   git clone https://github.com/seralifatih/OneRule.git
    cd onerule
    ```
 2. **Install dependencies**
@@ -105,14 +103,12 @@ Privacy-conscious users can build OneRule locally and verify behavior themselves
 
 ## 🧰 Tech Stack
 
-> Replace placeholders with your final stack.
-
-- **Language:** [Kotlin / Dart]
-- **UI:** [Jetpack Compose / Flutter]
-- **Local Database:** [Room / Hive / SQLCipher]
-- **State Management:** [Insert State Management]
-- **Crypto & Secure Storage:** [Insert Security Libraries]
-- **Architecture:** [Insert Architecture Pattern]
+- **Language:** Dart
+- **UI:** Flutter (Material)
+- **Local Database:** Hive (`HiveAesCipher` encrypted box)
+- **State Management:** Provider
+- **Crypto & Secure Storage:** `cryptography`, `flutter_secure_storage`, `local_auth`, Hive `HiveAesCipher`
+- **Architecture:** Layered Flutter app (UI/screens -> Provider state -> service/facade layer)
 
 ---
 
@@ -131,8 +127,8 @@ Please keep PRs small and security-aware.
 
 If you discover a security vulnerability, **do not open a public GitHub issue**.
 
-Report it privately via email: **[security@fisoftware.com]**  
-Alternative contact: **[Insert Security Contact Email]**
+Report it privately via email: **security@fisoftware.com**  
+Alternative contact: **oneruleapp@gmail.com**
 
 We will investigate and coordinate responsible disclosure.
 
@@ -141,17 +137,6 @@ We will investigate and coordinate responsible disclosure.
 ## 📄 License & Copyright
 
 **Copyright © 2026 FI Software.**  
-Licensed under **[Insert License, e.g., GPLv3 / MIT / Apache-2.0]**.
+Licensed under **GNU General Public License v3.0 (GPL-3.0)**.
 
-See [`LICENSE`](./LICENSE) for full terms.
-
-## 📄 License
-"This project is licensed under the **GNU General Public License v3.0**. 
-
-Permissions of this strong copyleft license are conditioned on making available complete source code of licensed works and modifications under the same license. Copyright and license notices must be preserved. Contributors provide an express grant of patent rights. This ensures that OneRule remains free, open, and secure for everyone.
-
-For more details, see the [LICENSE](LICENSE) file in the root directory.
-
-Copyright © 2026 FI Software. All rights reserved."
-
-
+See [GNU GPL v3.0](https://www.gnu.org/licenses/gpl-3.0) for full terms.

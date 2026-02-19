@@ -260,9 +260,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.lock_person_rounded,
-                    size: AppSpacing.giant + AppSpacing.giant / 2,
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/icon/app_icon.png',
+                      width: AppSpacing.giant + AppSpacing.giant / 2,
+                      height: AppSpacing.giant + AppSpacing.giant / 2,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.lock_person_rounded,
+                        size: AppSpacing.giant + AppSpacing.giant / 2,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.giant),
