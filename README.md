@@ -29,6 +29,13 @@ https://play.google.com/store/apps/details?id=com.fidevelopment.onerule
 
 ---
 
+## 🌐 Live Website
+
+GitHub Pages landing page:  
+https://seralifatih.github.io/OneRuleWeb/
+
+---
+
 ## 📸 Screenshots
 
 | Vault | Settings | Password Generator |
