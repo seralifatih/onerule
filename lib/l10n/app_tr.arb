@@ -1,4 +1,4 @@
-{
+﻿{
     "@@locale": "tr",
     "appTitle": "OneRule Kasa",
     "settings": "Ayarlar",
@@ -10,6 +10,20 @@
     "biometricLogin": "Biyometrik Giriş",
     "setPanicPin": "Panik PIN Ayarla",
     "dataManagement": "Veri Yönetimi",
+    "backupRestoreTitle": "Backup & Restore",
+    "backupRestoreDescription": "Create encrypted backups and restore from a backup file.",
+    "createBackupCta": "Create Backup",
+    "restoreFromBackupCta": "Restore from Backup",
+    "backupLastUnknown": "No backup yet",
+    "backupGuideTitle": "Important before you continue",
+    "backupGuideStep1": "Create backups regularly and store them somewhere safe.",
+    "backupGuideStep2": "If you lose your PIN, your vault cannot be recovered.",
+    "backupGuideStep3": "Keep your backup passphrase separate from your device.",
+    "backupGuideStep4": "Restoring merges imported items into your current vault.",
+    "exportDebugLogTitle": "Hata gunlugunu disa aktar",
+    "exportDebugLogWarning": "Gunluk yigin izleri icerebilir ancak sifreler yer almamalidir.",
+    "debugLogEmpty": "Henuz disa aktarilacak bir hata gunlugu yok.",
+    "debugLogExportFailed": "Hata gunlugu disa aktarma basarisiz.",
     "exportPasswords": "Şifreleri Dışa Aktar",
     "importPasswords": "Şifreleri İçe Aktar",
     "deleteAllData": "Tüm Verileri Sil",
@@ -86,6 +100,12 @@
     "enterPanicPin": "Panik PIN Girin",
     "panicPinSameAsMaster": "Ana PIN ile aynı olamaz",
     "panicPinSet": "Panik PIN ayarlandı.",
+    "panicPinInfoTitle": "Panik PIN'i etkinlestirmeden once",
+    "panicPinInfoWhatItDoes": "Panik PIN, alternatif bir acil durum akisina giris yapar.",
+    "panicPinInfoDecoyVault": "Gercek kasaniz yerine bir yem kasa gosterir.",
+    "panicPinInfoRisk": "Yanlislikla kullanirsaniz verileriniz kayip sanilabilir.",
+    "panicPinConfirmLabel": "Yem kasa akisinin olusturulacagini anliyorum.",
+    "panicPinConfirmRequired": "Kaydetmeden once lutfen onaylayin.",
     "privacyModeHelperText": "Gizlilik modu, ana PIN girilene kadar kasayı boş gösterir.",
     "biometricAvailable": "Parmak izi / Face ID kullan",
     "biometricUnavailable": "Bu cihazda kullanılmıyor",
@@ -165,4 +185,8 @@
     "biometricPrompt": "Giriş yapmak için kimliğinizi doğrulayın",
     "usePinToFinishUnlocking": "Kilidi tamamlamak için PIN kullanın."
 }
+
+
+
+
 

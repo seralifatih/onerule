@@ -1,0 +1,28 @@
+OneRule, %100 çevrimdışı, açık kaynaklı bir şifre yöneticisidir. Şifreleriniz asla cihazınızdan çıkmaz.
+
+<b>Bulut Yok. Takip Yok. Ödün Yok.</b>
+
+Tüm veriler yerel olarak saklanır ve AES-256 ile şifrelenir. Hesap gerekmez, internet izni yoktur, hiçbir yere analitik gönderilmez.
+
+<b>Özellikler</b>
+
+• AES-256 şifreli kasa — verileriniz PIN'iniz olmadan okunamaz
+• Ana PIN ve isteğe bağlı biyometrik kilit açma (parmak izi / yüz)
+• Panik Modu — zorla kilidi açtırılmanız durumunda sahte bir kasa açan ikinci PIN
+• Şifreli yedekleme dışa ve içe aktarma
+• Kategori filtreleme ve tam metin arama
+• Çoklu dil desteği: Türkçe, İngilizce, Almanca
+• Karanlık mod ve açık mod
+• Reklam yok. Takip yok. Bulut yok. Hiçbir zaman.
+
+<b>Panik Modu</b>
+
+OneRule benzersiz bir Panik Modu özelliği içerir. Gerçek PIN'iniz yerine girildiğinde, içinde zararsız sahte girişler bulunan tamamen ayrı bir kasa açan ikincil bir "Panik PIN" ayarlayabilirsiniz.
+
+<b>Gizlilik</b>
+
+OneRule'un internet izni yoktur. Hiçbir veri hiçbir yere gönderilemez. Kaynak kodu GPL-3.0 lisansı altında GitHub'da tamamen açıktır.
+
+<b>Önemli</b>
+
+PIN'iniz kasanızın tek anahtarıdır. PIN'inizi unutursanız, geliştirici dahil kimse verilerinizi kurtaramaz. Lütfen PIN'inizi güvenli bir yerde saklayın.

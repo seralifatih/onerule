@@ -22,6 +22,10 @@ class _FakeDatabaseService extends DatabaseService {
   List<PasswordModel> getAllPasswords() => List<PasswordModel>.from(_items);
 
   @override
+  Future<List<PasswordModel>> getAllPasswordsDecrypted() async =>
+      getAllPasswords();
+
+  @override
   Future<void> addPassword(PasswordModel password) async {
     _items.add(password);
   }
@@ -106,17 +110,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.alternate_email_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.more_vert_rounded), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.alternate_email_rounded));
-    await tester.pump();
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Copy username').last);
+    await tester.pumpAndSettle();
 
     expect(fakeLockFacade.usernameCopyCalls, 1);
     expect(fakeLockFacade.passwordCopyCalls, 0);
 
-    await tester.tap(find.byIcon(Icons.copy_rounded));
-    await tester.pump();
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Copy password').last);
+    await tester.pumpAndSettle();
 
     expect(fakeLockFacade.passwordCopyCalls, 1);
   });

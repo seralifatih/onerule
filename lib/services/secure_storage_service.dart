@@ -33,12 +33,13 @@ class SecureStorageService {
   static const String _keyEncryptionKey = 'encryptionKey';
   static const String _keyMasterPinHash = 'masterPinHash';
   static const String _keyMasterPinSalt = 'masterPinSalt';
-  static const String _keyPanicPin = 'panicPin'; // EKLENDİ
+  static const String _keyPanicPin = 'panicPin';
   static const String _keyPanicPinHash = 'panicPinHash';
   static const String _keyPanicPinSalt = 'panicPinSalt';
   static const String _keyHiveSalt = 'hiveSalt';
   static const String _keyLegacyJsonImportDone = 'legacyJsonImportDone';
   static const String _keyLastBackupAt = 'lastBackupAt';
+  static const String _keyGcmMigrationDone = 'gcmFieldMigrationDone';
 
   static List<int>? _sessionKey;
 
@@ -213,6 +214,15 @@ class SecureStorageService {
   Future<bool> hasCompletedLegacyJsonImport() async {
     final value = await _secureStorage.read(key: _keyLegacyJsonImportDone);
     return value == 'true';
+  }
+
+  Future<bool> hasCompletedGcmMigration() async {
+    final value = await _secureStorage.read(key: _keyGcmMigrationDone);
+    return value == 'true';
+  }
+
+  Future<void> setGcmMigrationCompleted() async {
+    await _secureStorage.write(key: _keyGcmMigrationDone, value: 'true');
   }
 
   Future<void> setLegacyJsonImportCompleted() async {

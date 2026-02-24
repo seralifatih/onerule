@@ -16,6 +16,10 @@ class _FakeDatabaseService extends DatabaseService {
   List<PasswordModel> getAllPasswords() => <PasswordModel>[];
 
   @override
+  Future<List<PasswordModel>> getAllPasswordsDecrypted() async =>
+      getAllPasswords();
+
+  @override
   Future<void> addPassword(PasswordModel password) async {}
 
   @override
@@ -57,9 +61,10 @@ ThemeData _darkTheme() {
   );
 }
 
-Widget _buildApp(ThemeMode mode) {
-  final provider = PasswordProvider(dbService: _FakeDatabaseService());
-
+Widget _buildApp({
+  required ThemeMode mode,
+  required PasswordProvider provider,
+}) {
   return ChangeNotifierProvider<PasswordProvider>.value(
     value: provider,
     child: MaterialApp(
@@ -89,7 +94,7 @@ void _expectSearchFieldStyle({
   );
   expect(
     decoration.hintStyle?.color,
-    expectedTheme.colorScheme.onSurface.withValues(alpha: 0.65),
+    expectedTheme.colorScheme.onSurface.withValues(alpha: 0.45),
   );
 }
 
@@ -98,8 +103,12 @@ void main() {
     WidgetTester tester,
   ) async {
     final lightTheme = _lightTheme();
+    final provider = PasswordProvider(dbService: _FakeDatabaseService());
+    await provider.init();
 
-    await tester.pumpWidget(_buildApp(ThemeMode.light));
+    await tester.pumpWidget(
+      _buildApp(mode: ThemeMode.light, provider: provider),
+    );
     await tester.pumpAndSettle();
 
     _expectSearchFieldStyle(tester: tester, expectedTheme: lightTheme);
@@ -109,8 +118,12 @@ void main() {
     WidgetTester tester,
   ) async {
     final darkTheme = _darkTheme();
+    final provider = PasswordProvider(dbService: _FakeDatabaseService());
+    await provider.init();
 
-    await tester.pumpWidget(_buildApp(ThemeMode.dark));
+    await tester.pumpWidget(
+      _buildApp(mode: ThemeMode.dark, provider: provider),
+    );
     await tester.pumpAndSettle();
 
     _expectSearchFieldStyle(tester: tester, expectedTheme: darkTheme);

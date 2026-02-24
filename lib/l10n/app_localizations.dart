@@ -160,6 +160,90 @@ abstract class AppLocalizations {
   /// **'Data Management'**
   String get dataManagement;
 
+  /// No description provided for @backupRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup & Restore'**
+  String get backupRestoreTitle;
+
+  /// No description provided for @backupRestoreDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create encrypted backups and restore from a backup file.'**
+  String get backupRestoreDescription;
+
+  /// No description provided for @createBackupCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Backup'**
+  String get createBackupCta;
+
+  /// No description provided for @restoreFromBackupCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from Backup'**
+  String get restoreFromBackupCta;
+
+  /// No description provided for @backupLastUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'No backup yet'**
+  String get backupLastUnknown;
+
+  /// No description provided for @backupGuideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Important before you continue'**
+  String get backupGuideTitle;
+
+  /// No description provided for @backupGuideStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Create backups regularly and store them somewhere safe.'**
+  String get backupGuideStep1;
+
+  /// No description provided for @backupGuideStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'If you lose your PIN, your vault cannot be recovered.'**
+  String get backupGuideStep2;
+
+  /// No description provided for @backupGuideStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep your backup passphrase separate from your device.'**
+  String get backupGuideStep3;
+
+  /// No description provided for @backupGuideStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring merges imported items into your current vault.'**
+  String get backupGuideStep4;
+
+  /// No description provided for @exportDebugLogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export debug log'**
+  String get exportDebugLogTitle;
+
+  /// No description provided for @exportDebugLogWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Log may include stack traces but should not include passwords.'**
+  String get exportDebugLogWarning;
+
+  /// No description provided for @debugLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No debug log available yet.'**
+  String get debugLogEmpty;
+
+  /// No description provided for @debugLogExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export debug log.'**
+  String get debugLogExportFailed;
+
   /// No description provided for @exportPasswords.
   ///
   /// In en, this message translates to:
@@ -555,6 +639,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Panic PIN set.'**
   String get panicPinSet;
+
+  /// No description provided for @panicPinInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Before enabling Panic PIN'**
+  String get panicPinInfoTitle;
+
+  /// No description provided for @panicPinInfoWhatItDoes.
+  ///
+  /// In en, this message translates to:
+  /// **'Panic PIN unlocks an alternate emergency flow.'**
+  String get panicPinInfoWhatItDoes;
+
+  /// No description provided for @panicPinInfoDecoyVault.
+  ///
+  /// In en, this message translates to:
+  /// **'It shows a decoy vault instead of your real vault.'**
+  String get panicPinInfoDecoyVault;
+
+  /// No description provided for @panicPinInfoRisk.
+  ///
+  /// In en, this message translates to:
+  /// **'If used by mistake, you may think your data is missing.'**
+  String get panicPinInfoRisk;
+
+  /// No description provided for @panicPinConfirmLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand this creates a decoy vault flow.'**
+  String get panicPinConfirmLabel;
+
+  /// No description provided for @panicPinConfirmRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please confirm that you understand before saving.'**
+  String get panicPinConfirmRequired;
 
   /// No description provided for @privacyModeHelperText.
   ///

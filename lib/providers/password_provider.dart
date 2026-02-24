@@ -125,8 +125,10 @@ class PasswordProvider extends ChangeNotifier {
     _isLoading = true;
     _notifySafely();
 
-    final allPasswords = _dbService.getAllPasswords()
-      ..sort((a, b) => b.createdDate.compareTo(a.createdDate));
+    // getAllPasswordsDecrypted() decrypts the GCM field-level password values
+    // before returning — this is now the correct method to use everywhere.
+    final allPasswords = await _dbService.getAllPasswordsDecrypted();
+    allPasswords.sort((a, b) => b.createdDate.compareTo(a.createdDate));
 
     if (requestId != _refreshRequestId || _isDisposed) {
       return;

@@ -1,0 +1,20 @@
+OneRule ist ein 100% offline, Open-Source-Passwort-Manager. Ihre Passwörter verlassen niemals Ihr Gerät.
+
+<b>Keine Cloud. Kein Tracking. Kein Kompromiss.</b>
+
+Alle Daten werden lokal gespeichert und mit AES-256 verschlüsselt. Kein Konto erforderlich, keine Internetberechtigung, keine Analysen werden gesendet.
+
+<b>Funktionen</b>
+
+• AES-256-verschlüsselter Tresor — Ihre Daten sind ohne Ihre PIN unleserlich
+• Master-PIN mit optionaler biometrischer Entsperrung
+• Panik-Modus — eine zweite PIN, die bei Zwang einen Köder-Tresor öffnet
+• Verschlüsseltes Backup-Export und -Import
+• Kategoriefilterung und Volltextsuche
+• Mehrsprachig: Deutsch, Englisch, Türkisch
+• Dunkel- und Hellmodus
+• Keine Werbung. Kein Tracking. Keine Cloud. Niemals.
+
+<b>Datenschutz</b>
+
+OneRule hat keine Internetberechtigung und kann keine Daten senden. Der Quellcode ist vollständig unter der GPL-3.0-Lizenz auf GitHub verfügbar.

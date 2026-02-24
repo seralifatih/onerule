@@ -1,4 +1,4 @@
-{
+﻿{
     "@@locale": "de",
     "appTitle": "OneRule Tresor",
     "settings": "Einstellungen",
@@ -10,6 +10,20 @@
     "biometricLogin": "Biometrischer Login",
     "setPanicPin": "Panik-PIN setzen",
     "dataManagement": "Datenverwaltung",
+    "backupRestoreTitle": "Backup & Restore",
+    "backupRestoreDescription": "Create encrypted backups and restore from a backup file.",
+    "createBackupCta": "Create Backup",
+    "restoreFromBackupCta": "Restore from Backup",
+    "backupLastUnknown": "No backup yet",
+    "backupGuideTitle": "Important before you continue",
+    "backupGuideStep1": "Create backups regularly and store them somewhere safe.",
+    "backupGuideStep2": "If you lose your PIN, your vault cannot be recovered.",
+    "backupGuideStep3": "Keep your backup passphrase separate from your device.",
+    "backupGuideStep4": "Restoring merges imported items into your current vault.",
+    "exportDebugLogTitle": "Debug-Log exportieren",
+    "exportDebugLogWarning": "Das Log kann Stack-Traces enthalten, aber keine Passwoerter.",
+    "debugLogEmpty": "Noch kein Debug-Log verfuegbar.",
+    "debugLogExportFailed": "Debug-Log konnte nicht exportiert werden.",
     "exportPasswords": "Passwörter exportieren",
     "importPasswords": "Passwörter importieren",
     "deleteAllData": "Alle Daten löschen",
@@ -86,6 +100,12 @@
     "enterPanicPin": "Panik-PIN eingeben",
     "panicPinSameAsMaster": "Darf nicht mit der Master-PIN identisch sein",
     "panicPinSet": "Panik-PIN gesetzt.",
+    "panicPinInfoTitle": "Vor dem Aktivieren der Panik-PIN",
+    "panicPinInfoWhatItDoes": "Die Panik-PIN startet einen alternativen Notfallablauf.",
+    "panicPinInfoDecoyVault": "Sie zeigt einen Fake-Tresor statt Ihres echten Tresors.",
+    "panicPinInfoRisk": "Bei versehentlicher Nutzung koennen Daten als verloren wirken.",
+    "panicPinConfirmLabel": "Ich verstehe, dass dadurch ein Fake-Tresor-Ablauf entsteht.",
+    "panicPinConfirmRequired": "Bitte bestaetigen Sie dies vor dem Speichern.",
     "privacyModeHelperText": "Privatmodus zeigt leeren Tresor bis zur Entsperrung mit Haupt-PIN.",
     "biometricAvailable": "Fingerabdruck / Face ID verwenden",
     "biometricUnavailable": "Auf diesem Gerät nicht verfügbar",
@@ -165,4 +185,8 @@
     "biometricPrompt": "Bitte bestätigen Sie Ihre Identität zur Anmeldung",
     "usePinToFinishUnlocking": "Zum Entsperren bitte PIN verwenden."
 }
+
+
+
+
 

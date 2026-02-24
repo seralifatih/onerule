@@ -77,45 +77,21 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
     return PasswordCategories.labelFor(loc, category);
   }
 
-  void _setPasswordRevealActive(bool isActive) {
-    final nextObscure = !isActive;
-    if (_isObscure == nextObscure) return;
-    setState(() => _isObscure = nextObscure);
-    if (isActive) {
-      HapticFeedback.selectionClick();
-    }
-  }
-
   Widget _buildPressHoldRevealButton(AppLocalizations loc) {
-    final revealHint = loc.passwordRevealHoldHint;
-    final revealTooltip = loc.passwordRevealHoldTooltip;
-    final concealTooltip = loc.passwordRevealReleaseTooltip;
-
     return Semantics(
       button: true,
       label: loc.passwordRevealControlLabel,
-      hint: revealHint,
-      onLongPressHint: revealHint,
-      child: Tooltip(
-        message: _isObscure ? revealTooltip : concealTooltip,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onLongPressStart: (_) => _setPasswordRevealActive(true),
-          onLongPressEnd: (_) => _setPasswordRevealActive(false),
-          onLongPressCancel: () => _setPasswordRevealActive(false),
-          child: SizedBox.square(
-            dimension: kMinInteractiveDimension,
-            child: Center(
-              child: ExcludeSemantics(
-                child: Icon(
-                  _isObscure
-                      ? Icons.visibility_rounded
-                      : Icons.visibility_off_rounded,
-                ),
-              ),
-            ),
-          ),
+      child: IconButton(
+        tooltip: _isObscure
+            ? loc.passwordRevealHoldTooltip // reuses your existing string
+            : loc.passwordRevealReleaseTooltip,
+        icon: Icon(
+          _isObscure ? Icons.visibility_rounded : Icons.visibility_off_rounded,
         ),
+        onPressed: () {
+          HapticFeedback.selectionClick();
+          setState(() => _isObscure = !_isObscure);
+        },
       ),
     );
   }

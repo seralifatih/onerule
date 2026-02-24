@@ -1,0 +1,28 @@
+OneRule is a 100% offline, open-source password manager. Your passwords never leave your device.
+
+<b>Zero Cloud. Zero Tracking. Zero Compromise.</b>
+
+All data is stored locally and encrypted with AES-256. No account required, no internet permission, no analytics sent anywhere.
+
+<b>Features</b>
+
+• AES-256 encrypted vault — your data is unreadable without your PIN
+• Master PIN with optional biometric unlock (fingerprint / face)
+• Panic Mode — set a secondary PIN that opens a decoy vault if you are forced to unlock
+• Encrypted backup export and import — take your vault anywhere
+• Category filtering and full-text search
+• Multi-language support: English, Turkish, German
+• Dark mode and light mode
+• No ads. No tracking. No cloud. Ever.
+
+<b>Panic Mode</b>
+
+OneRule includes a unique Panic Mode feature. You can configure a secondary "Panic PIN" that, when entered instead of your real PIN, opens a completely separate decoy vault containing harmless dummy entries. This is designed for situations where you may be coerced into unlocking your device.
+
+<b>Privacy</b>
+
+OneRule has no internet permission. It cannot send any data anywhere. The source code is fully open on GitHub under the GPL-3.0 license — you can verify every claim yourself.
+
+<b>Important</b>
+
+Your PIN is the only key to your vault. If you forget your PIN, your data cannot be recovered by anyone, including the developer. Please store your PIN somewhere safe.

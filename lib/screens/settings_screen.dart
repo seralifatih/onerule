@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart'; // ← NEW
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../providers/password_provider.dart';
 import '../services/analytics_service.dart';
 import '../services/app_facade.dart';
+import '../services/local_log_service.dart';
+import 'backup_restore_screen.dart';
 import 'login_screen.dart';
 import '../providers/theme_provider.dart';
 import '../providers/language_provider.dart';
@@ -22,18 +24,18 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthFacade _authFacade = AuthFacade();
-  final BackupFacade _backupFacade = BackupFacade();
   final AnalyticsService _analytics = AnalyticsService.instance;
 
   bool _biometricEnabled = false;
-  bool _hardwareAvailable = false; // Cihazda parmak izi var mı?
-  DateTime? _lastBackupAt;
+  bool _hardwareAvailable = false;
+
+  // ─── Buy Me a Coffee URL ─────────────────────────────────────────────────
+  static const _buyMeCoffeeUrl = 'https://buymeacoffee.com/seralifatih';
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
-    _loadBackupStatus();
   }
 
   Future<void> _loadSettings() async {
@@ -48,27 +50,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
       available = false;
     }
 
-    // GÜNCELLEME: Cihaz desteklemiyorsa veritabanındaki ayarı ARTIK DEĞİŞTİRMİYORUZ.
-    // Böylece kullanıcı telefon değiştirirse tercihi (true/false) korunur.
-    // UI tarafında switch zaten pasif (disabled) olacak.
-
     if (mounted) {
       setState(() {
         _biometricEnabled = enabled;
-        _hardwareAvailable = available; // Donanım durumunu kaydet
+        _hardwareAvailable = available;
       });
     }
   }
 
-  Future<void> _loadBackupStatus() async {
-    final lastBackupAt = await _backupFacade.getLastBackupAt();
-    if (!mounted) return;
-    setState(() {
-      _lastBackupAt = lastBackupAt;
-    });
+  // ─── Buy Me a Coffee launcher ─────────────────────────────────────────────
+  Future<void> _openBuyMeCoffee() async {
+    final uri = Uri.parse(_buyMeCoffeeUrl);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open link')),
+        );
+      }
+    }
   }
 
-  // --- DİALOG FONKSİYONLARI ---
+  // --- DIALOG FUNCTIONS (unchanged) ----------------------------------------
+
   void _showVerifyCurrentPinDialog() {
     final verifyController = TextEditingController();
     final loc = AppLocalizations.of(context)!;
@@ -105,8 +108,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               bool isValid = await _authFacade.verifyMasterPin(
                 verifyController.text,
               );
-
-              // GÜVENLİK: İşlem biter bitmez controller'ı temizle
               verifyController.clear();
 
               if (isValid && mounted) {
@@ -175,18 +176,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   newPin: newPin,
                   provider: provider,
                 );
-
-                // GÜVENLİK: PIN değişti, belleği temizle
                 newPinController.clear();
 
                 if (mounted) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(loc.pinChangeSuccess)));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(loc.pinChangeSuccess)),
+                  );
                 }
               } on AuthException catch (_) {
-                // Hata durumunda da temizle
                 newPinController.clear();
                 if (mounted) {
                   final semanticColors =
@@ -211,74 +209,141 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showSetPanicPinDialog() {
     final panicController = TextEditingController();
     final loc = AppLocalizations.of(context)!;
+    bool confirmed = false;
+    String? localError;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(loc.setPanicPin),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(loc.enterPanicPin),
-            const SizedBox(height: AppSpacing.sm + AppSpacing.xs / 2),
-            TextField(
-              controller: panicController,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              obscureText: true,
-              decoration: const InputDecoration(
-                hintText: "••••••",
-                border: OutlineInputBorder(),
+      builder: (context) {
+        final semanticColors =
+            Theme.of(context).extension<AppSemanticColors>() ??
+                AppTheme.fallbackSemanticColors;
+        final textTheme = Theme.of(context).textTheme;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(loc.setPanicPin),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: semanticColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.medium),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          loc.panicPinInfoTitle,
+                          style: textTheme.labelLarge?.copyWith(
+                            color: semanticColors.warning,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          '- ${loc.panicPinInfoWhatItDoes}\n'
+                          '- ${loc.panicPinInfoDecoyVault}\n'
+                          '- ${loc.panicPinInfoRisk}',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: semanticColors.warning,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(loc.enterPanicPin),
+                  const SizedBox(height: AppSpacing.sm + AppSpacing.xs / 2),
+                  TextField(
+                    controller: panicController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      hintText: "••••••",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  CheckboxListTile(
+                    value: confirmed,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(loc.panicPinConfirmLabel),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        confirmed = value ?? false;
+                        localError = null;
+                      });
+                    },
+                  ),
+                  if (localError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
+                      child: Text(
+                        localError!,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: semanticColors.destructive,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(loc.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor:
-                  (Theme.of(context).extension<AppSemanticColors>() ??
-                          AppTheme.fallbackSemanticColors)
-                      .destructive,
-            ),
-            onPressed: () async {
-              try {
-                await _authFacade.setPanicPin(
-                  context: context,
-                  panicPin: panicController.text,
-                );
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(loc.cancel),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: semanticColors.destructive,
+                ),
+                onPressed: () async {
+                  if (!confirmed) {
+                    setDialogState(
+                      () => localError = loc.panicPinConfirmRequired,
+                    );
+                    return;
+                  }
 
-                // GÜVENLİK: Panik PIN'i bellekte tutma
-                panicController.clear();
+                  try {
+                    await _authFacade.setPanicPin(
+                      context: context,
+                      panicPin: panicController.text,
+                    );
+                    panicController.clear();
 
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(loc.panicPinSet)));
-                }
-              } on AuthException catch (e) {
-                panicController.clear();
-                if (mounted) {
-                  final semanticColors =
-                      Theme.of(context).extension<AppSemanticColors>() ??
-                          AppTheme.fallbackSemanticColors;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(e.message),
-                      backgroundColor: semanticColors.destructive,
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text(loc.save),
+                    if (mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(loc.panicPinSet)),
+                      );
+                    }
+                  } on AuthException catch (e) {
+                    panicController.clear();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(e.message),
+                          backgroundColor: semanticColors.destructive,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Text(loc.save),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -330,8 +395,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ...options.map(
                   (seconds) => Semantics(
                     button: true,
-                    selected: securitySettings.autoLockTimeoutSeconds == seconds,
-                    label: '${loc.autoLockTitle}: ${_autoLockLabel(loc, seconds)}',
+                    selected:
+                        securitySettings.autoLockTimeoutSeconds == seconds,
+                    label:
+                        '${loc.autoLockTitle}: ${_autoLockLabel(loc, seconds)}',
                     child: ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
@@ -340,12 +407,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: colorScheme.onSurface,
                         ),
                       ),
-                      trailing: securitySettings.autoLockTimeoutSeconds == seconds
-                          ? Icon(
-                              Icons.check_rounded,
-                              color: colorScheme.primary,
-                            )
-                          : null,
+                      trailing:
+                          securitySettings.autoLockTimeoutSeconds == seconds
+                              ? Icon(
+                                  Icons.check_rounded,
+                                  color: colorScheme.primary,
+                                )
+                              : null,
                       onTap: () => Navigator.pop(sheetContext, seconds),
                     ),
                   ),
@@ -402,13 +470,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: colorScheme.onSurface,
                         ),
                       ),
-                      trailing: securitySettings.clipboardAutoClearSeconds ==
-                              seconds
-                          ? Icon(
-                              Icons.check_rounded,
-                              color: colorScheme.primary,
-                            )
-                          : null,
+                      trailing:
+                          securitySettings.clipboardAutoClearSeconds == seconds
+                              ? Icon(
+                                  Icons.check_rounded,
+                                  color: colorScheme.primary,
+                                )
+                              : null,
                       onTap: () => Navigator.pop(sheetContext, seconds),
                     ),
                   ),
@@ -434,9 +502,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final textTheme = theme.textTheme;
     final semanticColors =
         theme.extension<AppSemanticColors>() ?? AppTheme.fallbackSemanticColors;
-    final backupStatusText = _lastBackupAt == null
-        ? '-'
-        : DateFormat('yyyy-MM-dd HH:mm').format(_lastBackupAt!);
 
     return Scaffold(
       appBar: AppBar(title: Text(loc.settings)),
@@ -444,7 +509,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           const SizedBox(height: AppSpacing.lg + AppSpacing.xs),
 
-          // --- DİL SEÇİMİ ---
+          // --- LANGUAGE ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Column(
@@ -493,7 +558,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                     style: ButtonStyle(
                       visualDensity: VisualDensity.comfortable,
-                      shape: MaterialStateProperty.all(
+                      shape: WidgetStateProperty.all(
                         RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.medium),
                         ),
@@ -506,7 +571,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: AppSpacing.lg + AppSpacing.xs),
 
-          // --- TEMA SEÇİCİ ---
+          // --- APPEARANCE ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Column(
@@ -550,7 +615,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                     style: ButtonStyle(
                       visualDensity: VisualDensity.comfortable,
-                      shape: MaterialStateProperty.all(
+                      shape: WidgetStateProperty.all(
                         RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.medium),
                         ),
@@ -574,7 +639,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: _showVerifyCurrentPinDialog,
           ),
 
-          // --- BİYOMETRİK GİRİŞ ---
+          // --- BIOMETRIC ---
           SwitchListTile(
             secondary: Icon(
               Icons.fingerprint,
@@ -589,15 +654,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   : loc.biometricUnavailable,
             ),
             value: _biometricEnabled,
-            // Donanım yoksa (available=false) onChanged NULL olur -> Tıklanamaz.
-            // Ama yukarıdaki 'value' sayesinde kullanıcının tercihi (açıksa) açık görünür.
             onChanged: _hardwareAvailable
                 ? (val) async {
+                    if (val) {
+                      // Enabling: verify the biometric actually works first.
+                      // This fires the system fingerprint/face prompt.
+                      final outcome = await _authFacade.attemptBiometricUnlock(
+                        provider: Provider.of<PasswordProvider>(
+                          context,
+                          listen: false,
+                        ),
+                        localizedReason:
+                            'Confirm your biometric to enable unlock',
+                      );
+
+                      // If the user cancelled or biometric failed, do not flip
+                      // the switch. successButRestoreFailed still means the
+                      // hardware prompt succeeded — allow it.
+                      if (outcome == BiometricUnlockOutcome.failedOrCanceled ||
+                          outcome == BiometricUnlockOutcome.unavailable) {
+                        return;
+                      }
+                    }
+
+                    // Disabling needs no prompt — just save and reflect.
                     await _authFacade.setBiometricEnabled(val);
-                    setState(() => _biometricEnabled = val);
+                    if (mounted) setState(() => _biometricEnabled = val);
                   }
                 : null,
           ),
+
           Semantics(
             button: true,
             label:
@@ -611,11 +697,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: Text(
                 _autoLockLabel(loc, securitySettings.autoLockTimeoutSeconds),
               ),
-              trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
+              trailing:
+                  const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
               onTap: () => _showAutoLockPicker(securitySettings),
             ),
           ),
+
           const Divider(),
+
           Padding(
             padding: const EdgeInsets.only(
               left: AppSpacing.lg,
@@ -629,6 +718,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+
           Semantics(
             button: true,
             label:
@@ -645,10 +735,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   securitySettings.clipboardAutoClearSeconds,
                 ),
               ),
-              trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
+              trailing:
+                  const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
               onTap: () => _showClipboardClearPicker(securitySettings),
             ),
           ),
+
           Semantics(
             enabled: securitySettings.clipboardAutoClearSeconds > 0,
             hint: securitySettings.clipboardAutoClearSeconds > 0
@@ -681,6 +773,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
             onTap: _showSetPanicPinDialog,
           ),
+
           Padding(
             padding: const EdgeInsets.only(
               left: AppSpacing.lg,
@@ -704,7 +797,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               bottom: AppSpacing.sm,
             ),
             child: Text(
-              loc.dataManagement,
+              loc.backupRestoreTitle,
               style: textTheme.labelLarge?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -712,33 +805,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           ListTile(
-            leading: Icon(Icons.upload_file, color: colorScheme.primary),
-            title: Text(loc.exportPasswords),
-            subtitle: Text(loc.backupLastTimestamp(backupStatusText)),
+            leading: Icon(Icons.backup_rounded, color: colorScheme.primary),
+            title: Text(loc.backupRestoreTitle),
+            subtitle: Text(loc.backupRestoreDescription),
+            trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
             onTap: () async {
-              final provider = Provider.of<PasswordProvider>(
+              await Navigator.push(
                 context,
-                listen: false,
+                MaterialPageRoute(
+                  builder: (context) => const BackupRestoreScreen(),
+                ),
               );
-              await _backupFacade.exportPasswords(context, provider);
-              await _loadBackupStatus();
             },
           ),
 
+          const Divider(),
+
           ListTile(
-            leading: Icon(
-              Icons.download_for_offline,
-              color: colorScheme.secondary,
-            ),
-            title: Text(loc.importPasswords),
-            onTap: () async {
-              final provider = Provider.of<PasswordProvider>(
-                context,
-                listen: false,
-              );
-              await _backupFacade.importPasswords(context, provider);
-              await _loadBackupStatus();
-            },
+            leading:
+                Icon(Icons.bug_report_outlined, color: colorScheme.primary),
+            title: Text(loc.exportDebugLogTitle),
+            subtitle: Text(loc.exportDebugLogWarning),
+            onTap: () => LocalLogService.instance.exportLog(context),
           ),
 
           const Divider(),
@@ -782,7 +870,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (context.mounted) {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(loc.allPasswordsDeleted)),
+                            SnackBar(
+                              content: Text(loc.allPasswordsDeleted),
+                            ),
                           );
                         }
                       },
@@ -799,6 +889,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
+          // ═══════════════════════════════════════════════════════════════════
+          // SUPPORT SECTION — NEW
+          // ═══════════════════════════════════════════════════════════════════
+          const Divider(),
+
+          Padding(
+            padding: const EdgeInsets.only(
+              left: AppSpacing.lg,
+              top: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+            ),
+            child: Text(
+              'Support',
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+
+          ListTile(
+            // Coffee-yellow tinted icon container — no external asset needed
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFDD00).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(AppRadius.medium),
+                border: Border.all(
+                  color: const Color(0xFFFFDD00).withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: const Center(
+                child: Text(
+                  '☕',
+                  style: TextStyle(fontSize: 20),
+                ),
+              ),
+            ),
+            title: const Text(
+              'Buy me a coffee',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              'If OneRule helps you, a coffee keeps it alive.',
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            trailing: Icon(
+              Icons.open_in_new_rounded,
+              size: 16,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            onTap: _openBuyMeCoffee,
+          ),
+
+          Padding(
+            padding: const EdgeInsets.only(
+              left: AppSpacing.lg,
+              right: AppSpacing.lg,
+              bottom: AppSpacing.sm,
+            ),
+            child: Text(
+              'OneRule is free, open-source, and has no ads. '
+              'Supporting is entirely optional — thank you.',
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
+
+          // ═══════════════════════════════════════════════════════════════════
           const Divider(),
 
           Padding(

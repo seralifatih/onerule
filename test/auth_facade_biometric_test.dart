@@ -15,6 +15,10 @@ class _FakeDatabaseService extends DatabaseService {
   List<PasswordModel> getAllPasswords() => <PasswordModel>[];
 
   @override
+  Future<List<PasswordModel>> getAllPasswordsDecrypted() async =>
+      getAllPasswords();
+
+  @override
   Future<void> addPassword(PasswordModel password) async {}
 
   @override

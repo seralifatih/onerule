@@ -126,6 +126,7 @@ class BackupService {
 
       final count =
           await _importRecords(decryptedRecords, addRecord: addRecord);
+      await _storage.setLastBackupAt(DateTime.now());
       _showSnack(context, loc.passwordsImported(count));
     } catch (_) {
       _showSnack(context, loc.importFailed);
@@ -147,6 +148,7 @@ class BackupService {
 
       final count = await _importRecords(parsed, addRecord: addRecord);
       await _storage.setLegacyJsonImportCompleted();
+      await _storage.setLastBackupAt(DateTime.now());
       _showSnack(context, loc.passwordsImported(count));
     } catch (_) {
       _showSnack(context, loc.importFailed);

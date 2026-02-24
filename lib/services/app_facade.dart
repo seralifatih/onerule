@@ -2,14 +2,12 @@ import 'dart:async';
 import 'dart:io'; // Platform kontrolu icin gerekli
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../constants/password_categories.dart';
 import '../providers/password_provider.dart';
-import '../providers/security_settings_provider.dart';
 import '../services/backup_service.dart';
 import '../services/biometric_service.dart';
+import '../services/clipboard_service.dart';
 import '../services/secure_storage_service.dart';
 import '../models/password_model.dart';
 
@@ -24,6 +22,7 @@ class AuthFacade {
   final BiometricService _biometricService;
 
   Future<bool> hasMasterPin() => _storageService.hasMasterPin();
+  Future<bool> hasPanicPin() => _storageService.hasPanicPin();
   Future<bool> isBiometricEnabled() => _storageService.isBiometricEnabled();
   Future<bool> isBiometricsAvailable() =>
       _biometricService.isBiometricsAvailable();
@@ -110,7 +109,8 @@ class AuthFacade {
     }
     if (!available) {
       if (kDebugMode) {
-        debugPrint('[AuthFacade] outcome=${BiometricUnlockOutcome.unavailable.name}');
+        debugPrint(
+            '[AuthFacade] outcome=${BiometricUnlockOutcome.unavailable.name}');
       }
       return BiometricUnlockOutcome.unavailable;
     }
@@ -218,24 +218,22 @@ class BackupFacade {
 }
 
 class LockFacade {
-  LockFacade();
+  LockFacade({ClipboardService? clipboardService})
+      : _clipboardService = clipboardService ?? ClipboardService.instance;
 
-  Timer? _clipboardTimer;
-  String? _lastCopiedText;
+  final ClipboardService _clipboardService;
 
   void copyPasswordToClipboard({
     required BuildContext context,
     required String password,
     required String title,
   }) {
-    final settings = context.read<SecuritySettingsProvider>();
-    final secs = settings.clipboardAutoClearSeconds;
-    _copyToClipboard(
-      context: context,
-      value: password,
-      copiedMessage: 'Password copied (clears in 30s)',
-      autoClear: secs > 0,
-      clearDuration: Duration(seconds: secs),
+    unawaited(
+      _clipboardService.copyWithAutoClear(
+        context,
+        password,
+        successMessageKey: ClipboardService.copiedToClipboardKey,
+      ),
     );
   }
 
@@ -244,62 +242,16 @@ class LockFacade {
     required String username,
     required String title,
   }) {
-    final settings = context.read<SecuritySettingsProvider>();
-    final secs = settings.clipboardAutoClearSeconds;
-    final clearUser = settings.applyClipboardPolicyToUsername;
-    _copyToClipboard(
-      context: context,
-      value: username,
-      copiedMessage: 'Username copied',
-      autoClear: secs > 0 && clearUser,
-      clearDuration: Duration(seconds: secs),
-    );
-  }
-
-  Future<void> _copyToClipboard({
-    required BuildContext context,
-    required String value,
-    required String copiedMessage,
-    required bool autoClear,
-    required Duration clearDuration,
-  }) async {
-    await Clipboard.setData(ClipboardData(text: value));
-    _lastCopiedText = value;
-
-    _clipboardTimer?.cancel();
-    if (autoClear) {
-      _clipboardTimer = Timer(clearDuration, () async {
-        final data = await Clipboard.getData(Clipboard.kTextPlain);
-        if (data?.text == _lastCopiedText) {
-          await Clipboard.setData(const ClipboardData(text: ''));
-        }
-      });
-    }
-
-    if (!context.mounted) return;
-    _showCopySnackBar(context, copiedMessage);
-  }
-
-  void _showCopySnackBar(BuildContext context, String message) {
-    final theme = Theme.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-        duration: const Duration(seconds: 2),
+    unawaited(
+      _clipboardService.copyWithAutoClear(
+        context,
+        username,
+        successMessageKey: ClipboardService.copiedToClipboardKey,
       ),
     );
   }
 
-  void dispose() {
-    _clipboardTimer?.cancel();
-  }
+  void dispose() {}
 
   void handleLifecycleState(AppLifecycleState state) {
     // ScreenProtector sadece Android ve iOS'ta calisir.

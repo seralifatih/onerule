@@ -7,6 +7,7 @@ import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import 'package:offline_pass_manager/models/password_model.dart';
 import 'package:offline_pass_manager/providers/language_provider.dart';
 import 'package:offline_pass_manager/providers/password_provider.dart';
+import 'package:offline_pass_manager/providers/security_settings_provider.dart';
 import 'package:offline_pass_manager/providers/theme_provider.dart';
 import 'package:offline_pass_manager/screens/home_screen.dart';
 import 'package:offline_pass_manager/services/database_service.dart';
@@ -35,6 +36,10 @@ class _FakeDatabaseService extends DatabaseService {
 
   @override
   List<PasswordModel> getAllPasswords() => _items.map(_copy).toList();
+
+  @override
+  Future<List<PasswordModel>> getAllPasswordsDecrypted() async =>
+      getAllPasswords();
 
   @override
   Future<void> addPassword(PasswordModel password) async {
@@ -70,6 +75,9 @@ Widget _buildTestApp(PasswordProvider passwordProvider) {
       ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
       ChangeNotifierProvider<LanguageProvider>(
         create: (_) => LanguageProvider(),
+      ),
+      ChangeNotifierProvider<SecuritySettingsProvider>(
+        create: (_) => SecuritySettingsProvider(),
       ),
     ],
     child: const MaterialApp(

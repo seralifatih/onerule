@@ -14,10 +14,14 @@ import 'providers/security_settings_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/app_facade.dart';
+import 'services/local_log_service.dart';
+import 'services/sqlcipher_spike_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LocalLogService.instance.initializeGlobalErrorHandlers();
+  await SqlCipherSpikeService().runOnceIfEnabled();
 
   await Hive.initFlutter();
   Hive.registerAdapter(PasswordModelAdapter());
@@ -222,4 +226,3 @@ class _InitializationScreenState extends State<InitializationScreen> {
 }
 
 enum _InitErrorAction { retry, goToLogin }
-

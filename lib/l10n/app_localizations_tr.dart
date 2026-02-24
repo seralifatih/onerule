@@ -39,6 +39,54 @@ class AppLocalizationsTr extends AppLocalizations {
   String get dataManagement => 'Veri Yönetimi';
 
   @override
+  String get backupRestoreTitle => 'Backup & Restore';
+
+  @override
+  String get backupRestoreDescription =>
+      'Create encrypted backups and restore from a backup file.';
+
+  @override
+  String get createBackupCta => 'Create Backup';
+
+  @override
+  String get restoreFromBackupCta => 'Restore from Backup';
+
+  @override
+  String get backupLastUnknown => 'No backup yet';
+
+  @override
+  String get backupGuideTitle => 'Important before you continue';
+
+  @override
+  String get backupGuideStep1 =>
+      'Create backups regularly and store them somewhere safe.';
+
+  @override
+  String get backupGuideStep2 =>
+      'If you lose your PIN, your vault cannot be recovered.';
+
+  @override
+  String get backupGuideStep3 =>
+      'Keep your backup passphrase separate from your device.';
+
+  @override
+  String get backupGuideStep4 =>
+      'Restoring merges imported items into your current vault.';
+
+  @override
+  String get exportDebugLogTitle => 'Hata gunlugunu disa aktar';
+
+  @override
+  String get exportDebugLogWarning =>
+      'Gunluk yigin izleri icerebilir ancak sifreler yer almamalidir.';
+
+  @override
+  String get debugLogEmpty => 'Henuz disa aktarilacak bir hata gunlugu yok.';
+
+  @override
+  String get debugLogExportFailed => 'Hata gunlugu disa aktarma basarisiz.';
+
+  @override
   String get exportPasswords => 'Şifreleri Dışa Aktar';
 
   @override
@@ -240,6 +288,28 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get panicPinSet => 'Panik PIN ayarlandı.';
+
+  @override
+  String get panicPinInfoTitle => 'Panik PIN\'i etkinlestirmeden once';
+
+  @override
+  String get panicPinInfoWhatItDoes =>
+      'Panik PIN, alternatif bir acil durum akisina giris yapar.';
+
+  @override
+  String get panicPinInfoDecoyVault =>
+      'Gercek kasaniz yerine bir yem kasa gosterir.';
+
+  @override
+  String get panicPinInfoRisk =>
+      'Yanlislikla kullanirsaniz verileriniz kayip sanilabilir.';
+
+  @override
+  String get panicPinConfirmLabel =>
+      'Yem kasa akisinin olusturulacagini anliyorum.';
+
+  @override
+  String get panicPinConfirmRequired => 'Kaydetmeden once lutfen onaylayin.';
 
   @override
   String get privacyModeHelperText =>

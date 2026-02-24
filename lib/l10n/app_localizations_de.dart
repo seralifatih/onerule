@@ -39,6 +39,55 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dataManagement => 'Datenverwaltung';
 
   @override
+  String get backupRestoreTitle => 'Backup & Restore';
+
+  @override
+  String get backupRestoreDescription =>
+      'Create encrypted backups and restore from a backup file.';
+
+  @override
+  String get createBackupCta => 'Create Backup';
+
+  @override
+  String get restoreFromBackupCta => 'Restore from Backup';
+
+  @override
+  String get backupLastUnknown => 'No backup yet';
+
+  @override
+  String get backupGuideTitle => 'Important before you continue';
+
+  @override
+  String get backupGuideStep1 =>
+      'Create backups regularly and store them somewhere safe.';
+
+  @override
+  String get backupGuideStep2 =>
+      'If you lose your PIN, your vault cannot be recovered.';
+
+  @override
+  String get backupGuideStep3 =>
+      'Keep your backup passphrase separate from your device.';
+
+  @override
+  String get backupGuideStep4 =>
+      'Restoring merges imported items into your current vault.';
+
+  @override
+  String get exportDebugLogTitle => 'Debug-Log exportieren';
+
+  @override
+  String get exportDebugLogWarning =>
+      'Das Log kann Stack-Traces enthalten, aber keine Passwoerter.';
+
+  @override
+  String get debugLogEmpty => 'Noch kein Debug-Log verfuegbar.';
+
+  @override
+  String get debugLogExportFailed =>
+      'Debug-Log konnte nicht exportiert werden.';
+
+  @override
   String get exportPasswords => 'Passwörter exportieren';
 
   @override
@@ -244,6 +293,29 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get panicPinSet => 'Panik-PIN gesetzt.';
+
+  @override
+  String get panicPinInfoTitle => 'Vor dem Aktivieren der Panik-PIN';
+
+  @override
+  String get panicPinInfoWhatItDoes =>
+      'Die Panik-PIN startet einen alternativen Notfallablauf.';
+
+  @override
+  String get panicPinInfoDecoyVault =>
+      'Sie zeigt einen Fake-Tresor statt Ihres echten Tresors.';
+
+  @override
+  String get panicPinInfoRisk =>
+      'Bei versehentlicher Nutzung koennen Daten als verloren wirken.';
+
+  @override
+  String get panicPinConfirmLabel =>
+      'Ich verstehe, dass dadurch ein Fake-Tresor-Ablauf entsteht.';
+
+  @override
+  String get panicPinConfirmRequired =>
+      'Bitte bestaetigen Sie dies vor dem Speichern.';
 
   @override
   String get privacyModeHelperText =>

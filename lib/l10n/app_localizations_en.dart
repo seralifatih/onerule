@@ -39,6 +39,54 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataManagement => 'Data Management';
 
   @override
+  String get backupRestoreTitle => 'Backup & Restore';
+
+  @override
+  String get backupRestoreDescription =>
+      'Create encrypted backups and restore from a backup file.';
+
+  @override
+  String get createBackupCta => 'Create Backup';
+
+  @override
+  String get restoreFromBackupCta => 'Restore from Backup';
+
+  @override
+  String get backupLastUnknown => 'No backup yet';
+
+  @override
+  String get backupGuideTitle => 'Important before you continue';
+
+  @override
+  String get backupGuideStep1 =>
+      'Create backups regularly and store them somewhere safe.';
+
+  @override
+  String get backupGuideStep2 =>
+      'If you lose your PIN, your vault cannot be recovered.';
+
+  @override
+  String get backupGuideStep3 =>
+      'Keep your backup passphrase separate from your device.';
+
+  @override
+  String get backupGuideStep4 =>
+      'Restoring merges imported items into your current vault.';
+
+  @override
+  String get exportDebugLogTitle => 'Export debug log';
+
+  @override
+  String get exportDebugLogWarning =>
+      'Log may include stack traces but should not include passwords.';
+
+  @override
+  String get debugLogEmpty => 'No debug log available yet.';
+
+  @override
+  String get debugLogExportFailed => 'Failed to export debug log.';
+
+  @override
   String get exportPasswords => 'Export Passwords';
 
   @override
@@ -240,6 +288,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get panicPinSet => 'Panic PIN set.';
+
+  @override
+  String get panicPinInfoTitle => 'Before enabling Panic PIN';
+
+  @override
+  String get panicPinInfoWhatItDoes =>
+      'Panic PIN unlocks an alternate emergency flow.';
+
+  @override
+  String get panicPinInfoDecoyVault =>
+      'It shows a decoy vault instead of your real vault.';
+
+  @override
+  String get panicPinInfoRisk =>
+      'If used by mistake, you may think your data is missing.';
+
+  @override
+  String get panicPinConfirmLabel =>
+      'I understand this creates a decoy vault flow.';
+
+  @override
+  String get panicPinConfirmRequired =>
+      'Please confirm that you understand before saving.';
 
   @override
   String get privacyModeHelperText =>
