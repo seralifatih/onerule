@@ -223,8 +223,9 @@ class DatabaseService {
     final done = await _secureStorage.hasCompletedGcmMigration();
     if (done) return;
 
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint('[DatabaseService] Starting GCM field migration');
+    }
 
     int migrated = 0;
     for (final model in _box.values.toList()) {

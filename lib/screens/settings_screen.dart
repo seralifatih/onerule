@@ -78,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(loc.verify),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -100,31 +100,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(loc.cancel),
           ),
           FilledButton(
             onPressed: () async {
-              bool isValid = await _authFacade.verifyMasterPin(
+              final navigator = Navigator.of(dialogContext);
+              final isValid = await _authFacade.verifyMasterPin(
                 verifyController.text,
               );
               verifyController.clear();
 
-              if (isValid && mounted) {
-                Navigator.pop(context);
+              if (!mounted) return;
+
+              navigator.pop();
+              if (isValid) {
                 _showSetNewPinDialog();
-              } else if (mounted) {
-                Navigator.pop(context);
-                final semanticColors =
-                    Theme.of(context).extension<AppSemanticColors>() ??
-                        AppTheme.fallbackSemanticColors;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(loc.wrongPin),
-                    backgroundColor: semanticColors.destructive,
-                  ),
-                );
+                return;
               }
+
+              final semanticColors =
+                  Theme.of(context).extension<AppSemanticColors>() ??
+                      AppTheme.fallbackSemanticColors;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(loc.wrongPin),
+                  backgroundColor: semanticColors.destructive,
+                ),
+              );
             },
             child: Text(loc.verify),
           ),
@@ -138,7 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final loc = AppLocalizations.of(context)!;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(loc.setNewPinTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -160,12 +163,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(loc.cancel),
           ),
           FilledButton(
             onPressed: () async {
               final newPin = newPinController.text;
+              final navigator = Navigator.of(dialogContext);
               final provider = Provider.of<PasswordProvider>(
                 context,
                 listen: false,
@@ -178,25 +182,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
                 newPinController.clear();
 
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(loc.pinChangeSuccess)),
-                  );
-                }
+                if (!mounted) return;
+                navigator.pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(loc.pinChangeSuccess)),
+                );
               } on AuthException catch (_) {
                 newPinController.clear();
-                if (mounted) {
-                  final semanticColors =
-                      Theme.of(context).extension<AppSemanticColors>() ??
-                          AppTheme.fallbackSemanticColors;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(loc.pinChangeFailed),
-                      backgroundColor: semanticColors.destructive,
-                    ),
-                  );
-                }
+                if (!mounted) return;
+                final semanticColors =
+                    Theme.of(context).extension<AppSemanticColors>() ??
+                        AppTheme.fallbackSemanticColors;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(loc.pinChangeFailed),
+                    backgroundColor: semanticColors.destructive,
+                  ),
+                );
               }
             },
             child: Text(loc.save),
@@ -313,29 +315,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     return;
                   }
 
+                  final navigator = Navigator.of(context);
                   try {
                     await _authFacade.setPanicPin(
-                      context: context,
+                      context: this.context,
                       panicPin: panicController.text,
                     );
                     panicController.clear();
 
-                    if (mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(loc.panicPinSet)),
-                      );
-                    }
+                    if (!mounted) return;
+                    navigator.pop();
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(content: Text(loc.panicPinSet)),
+                    );
                   } on AuthException catch (e) {
                     panicController.clear();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(e.message),
-                          backgroundColor: semanticColors.destructive,
-                        ),
-                      );
-                    }
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.message),
+                        backgroundColor: semanticColors.destructive,
+                      ),
+                    );
                   }
                 },
                 child: Text(loc.save),
@@ -546,10 +547,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         label: Text(loc.turkish),
                         icon: const Text("🇹🇷"),
                       ),
-                      ButtonSegment(
+                      const ButtonSegment(
                         value: LanguageMode.de,
-                        label: const Text("Deutsch"),
-                        icon: const Text("🇩🇪"),
+                        label: Text("Deutsch"),
+                        icon: Text("🇩🇪"),
                       ),
                     ],
                     selected: {languageProvider.currentMode},
@@ -845,36 +846,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
+                builder: (dialogContext) => AlertDialog(
                   title: Text(loc.deleteAllTitle),
                   content: Text(loc.deleteAllDescription),
                   actions: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(dialogContext),
                       child: Text(loc.cancel),
                     ),
                     TextButton(
                       onPressed: () async {
-                        await _analytics.vaultDeleteAllTriggered();
-                        await Provider.of<PasswordProvider>(
-                          context,
-                          listen: false,
-                        ).deleteAllPasswords();
+                        final navigator = Navigator.of(dialogContext);
                         final provider = Provider.of<PasswordProvider>(
-                          context,
+                          this.context,
                           listen: false,
                         );
+
+                        await _analytics.vaultDeleteAllTriggered();
+                        await provider.deleteAllPasswords();
                         await _analytics.vaultDeleteAllListEmptyConfirmed(
                           isEmpty: provider.passwords.isEmpty,
                         );
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(loc.allPasswordsDeleted),
-                            ),
-                          );
-                        }
+
+                        if (!mounted) return;
+                        navigator.pop();
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text(loc.allPasswordsDeleted),
+                          ),
+                        );
                       },
                       child: Text(
                         loc.delete,

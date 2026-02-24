@@ -19,8 +19,8 @@ migrate_working_dir/
 .idea/
 
 # The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+# VS Code which you may wish to include in version control.
+# Keep it commented here if you want to track `.vscode/`.
 #.vscode/
 
 # Flutter/Dart/Pub related
@@ -68,6 +68,13 @@ replay_pid*.log
 Thumbs.db
 Desktop.ini
 
+# Common local backup/conflict/temp artifacts
+*.orig
+*.rej
+*.bak
+*.tmp
+*.temp
+
 # Environment and secret files
 .env
 .env.*
@@ -80,5 +87,6 @@ Desktop.ini
 *.der
 
 # Local tooling caches
+# VS Code local workspace settings (machine-specific)
 .vscode/
 .cache/

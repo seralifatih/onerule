@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -121,14 +120,16 @@ class LocalLogService {
 
     value = value.replaceAllMapped(
       RegExp(
-        r'(?i)(password|passphrase|secret|token|pin)\s*[:=]\s*([^\s,\}\]]+)',
+        r'(password|passphrase|secret|token|pin)\s*[:=]\s*([^\s,}\]]+)',
+        caseSensitive: false,
       ),
       (m) => '${m.group(1)}=[REDACTED]',
     );
 
     value = value.replaceAllMapped(
       RegExp(
-        r'(?i)("?(password|passphrase|secret|token|pin)"?\s*:\s*")([^"]*)(")',
+        r'("?(password|passphrase|secret|token|pin)"?\s*:\s*")([^"]*)(")',
+        caseSensitive: false,
       ),
       (m) => '${m.group(1)}[REDACTED]${m.group(4)}',
     );

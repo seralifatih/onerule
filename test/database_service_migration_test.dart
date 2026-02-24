@@ -10,11 +10,10 @@ import 'package:offline_pass_manager/services/secure_storage_service.dart';
 class _FakeSecureStorageService extends SecureStorageService {
   _FakeSecureStorageService({
     required this.sessionKey,
-    this.gcmMigrationCompleted = false,
   }) : super.forTesting();
 
   final List<int> sessionKey;
-  bool gcmMigrationCompleted;
+  bool gcmMigrationCompleted = false;
   int setGcmMigrationCompletedCalls = 0;
 
   @override

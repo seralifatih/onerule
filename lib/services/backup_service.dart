@@ -65,6 +65,7 @@ class BackupService {
         if (outputFile != null) {
           final file = File(outputFile);
           await file.writeAsString(exportString);
+          if (!context.mounted) return;
           _showSnack(context, loc.backupSavedToDevice);
         }
       }
@@ -72,6 +73,7 @@ class BackupService {
       await _storage.setLastBackupAt(DateTime.now());
       passphrase = '';
     } catch (e) {
+      if (!context.mounted) return;
       _showSnack(context, loc.exportFailed(e.toString()));
     }
   }
@@ -95,8 +97,9 @@ class BackupService {
       final extension = result.files.single.extension ?? '';
 
       if (extension.toLowerCase() == 'json') {
+        if (!context.mounted) return;
         final ok = await _confirmLegacyJsonImport(context);
-        if (!ok) {
+        if (!ok || !context.mounted) {
           return;
         }
         await _importLegacyJson(context, file, addRecord: addRecord);
@@ -104,6 +107,7 @@ class BackupService {
       }
 
       final encryptedString = await file.readAsString();
+      if (!context.mounted) return;
       String? passphrase = await _askForPassphrase(
         context,
         title: loc.backupPassphraseTitle,
@@ -120,6 +124,7 @@ class BackupService {
       passphrase = '';
 
       if (decryptedRecords == null) {
+        if (!context.mounted) return;
         _showSnack(context, loc.importFailedInvalidOrPassword);
         return;
       }
@@ -127,8 +132,10 @@ class BackupService {
       final count =
           await _importRecords(decryptedRecords, addRecord: addRecord);
       await _storage.setLastBackupAt(DateTime.now());
+      if (!context.mounted) return;
       _showSnack(context, loc.passwordsImported(count));
     } catch (_) {
+      if (!context.mounted) return;
       _showSnack(context, loc.importFailed);
     }
   }
@@ -149,8 +156,10 @@ class BackupService {
       final count = await _importRecords(parsed, addRecord: addRecord);
       await _storage.setLegacyJsonImportCompleted();
       await _storage.setLastBackupAt(DateTime.now());
+      if (!context.mounted) return;
       _showSnack(context, loc.passwordsImported(count));
     } catch (_) {
+      if (!context.mounted) return;
       _showSnack(context, loc.importFailed);
     }
   }
@@ -174,6 +183,7 @@ class BackupService {
     if (await _storage.hasCompletedLegacyJsonImport()) {
       return true;
     }
+    if (!context.mounted) return false;
 
     final confirmed = await showDialog<bool>(
       context: context,

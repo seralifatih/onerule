@@ -42,7 +42,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Panic Mode onboarding banner state
   bool _showPanicModeBanner = false;
-  bool _hasPanicPin = false;
 
   @override
   void initState() {
@@ -78,7 +77,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     setState(() {
-      _hasPanicPin = hasPanic;
       _showPanicModeBanner = !hasPanic;
     });
   }
@@ -105,7 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final loc = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -457,17 +454,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         )
                       : total > 0
-                      ? Padding(
-                          padding: const EdgeInsets.only(right: AppSpacing.md),
-                          child: Text(
-                            '$visibleItemsCount / $total',
-                            style: textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.5),
-                            ),
-                          ),
-                        )
-                      : null,
+                          ? Padding(
+                              padding:
+                                  const EdgeInsets.only(right: AppSpacing.md),
+                              child: Text(
+                                '$visibleItemsCount / $total',
+                                style: textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.5),
+                                ),
+                              ),
+                            )
+                          : null,
               suffixIconConstraints: const BoxConstraints(minWidth: 0),
               contentPadding:
                   const EdgeInsets.symmetric(vertical: AppSpacing.md),

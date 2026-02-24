@@ -139,11 +139,11 @@ void main() {
     await tester.pumpWidget(
       ChangeNotifierProvider<PasswordProvider>.value(
         value: provider,
-        child: MaterialApp(
-          locale: const Locale('en'),
+        child: const MaterialApp(
+          locale: Locale('en'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const HomeScreen(),
+          home: HomeScreen(),
         ),
       ),
     );

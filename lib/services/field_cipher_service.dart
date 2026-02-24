@@ -70,12 +70,12 @@ class FieldCipherService {
       final padded = _repad(encoded);
       payload = base64Url.decode(padded);
     } catch (_) {
-      throw FieldCipherException('Invalid base64url encoding');
+      throw const FieldCipherException('Invalid base64url encoding');
     }
 
     if (payload.isEmpty || payload[0] != _encryptedMarker) {
-      throw FieldCipherException(
-          'Missing encryption marker — likely plaintext');
+      throw const FieldCipherException(
+          'Missing encryption marker - likely plaintext');
     }
 
     const nonceLength = 12;
@@ -83,7 +83,7 @@ class FieldCipherService {
     const headerLength = 1; // marker byte
 
     if (payload.length < headerLength + nonceLength + macLength) {
-      throw FieldCipherException('Payload too short');
+      throw const FieldCipherException('Payload too short');
     }
 
     final nonce = payload.sublist(headerLength, headerLength + nonceLength);
@@ -100,8 +100,8 @@ class FieldCipherService {
       );
       return utf8.decode(plainBytes);
     } on SecretBoxAuthenticationError {
-      throw FieldCipherException(
-        'GCM authentication failed — data may be tampered or key is wrong',
+      throw const FieldCipherException(
+        'GCM authentication failed - data may be tampered or key is wrong',
       );
     } catch (e) {
       throw FieldCipherException('Decryption error: $e');
