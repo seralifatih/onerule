@@ -1,21 +1,26 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../constants/password_categories.dart';
 import '../models/password_model.dart';
 import '../providers/password_provider.dart';
+import '../providers/security_settings_provider.dart';
 import '../services/analytics_service.dart';
+import '../services/credential_provider.dart';
+import '../services/recently_used_service.dart';
 import '../widgets/add_password_sheet.dart';
+import 'autofill_setup_screen.dart';
 import 'settings_screen.dart';
 import '../services/app_facade.dart';
 import '../theme/app_elevation.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_typography.dart';
 
 enum _HomeContentState { loading, emptyVault, noResults, list }
 
@@ -35,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final LockFacade _lockFacade;
   final AnalyticsService _analytics = AnalyticsService.instance;
   final BackupFacade _backupFacade = BackupFacade();
+  final CredentialProvider _credentialProvider = PlatformCredentialProvider();
 
   // Backup banner state
   DateTime? _lastBackupAt;
@@ -42,6 +48,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Panic Mode onboarding banner state
   bool _showPanicModeBanner = false;
+  bool _showAutofillSetupCard = false;
+  final Map<String, int> _copyCountdownById = <String, int>{};
+  final Map<String, Timer> _copyCountdownTimers = <String, Timer>{};
+  final RecentlyUsedService _recentlyUsedService = RecentlyUsedService();
+  bool _hideRecentlyUsed = false;
+  List<String> _recentlyUsedIds = const <String>[];
 
   @override
   void initState() {
@@ -49,9 +61,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _lockFacade = widget.lockFacade ?? LockFacade();
     _loadBackupStatus();
     _loadPanicBannerStatus();
+    _refreshAutofillStatus();
+    _loadRecentlyUsedPreferences();
   }
 
-  // ── Backup banner ─────────────────────────────────────────────────────────
+  // â”€â”€ Backup banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _loadBackupStatus() async {
     final lastBackupAt = await _backupFacade.getLastBackupAt();
@@ -65,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return DateTime.now().difference(_lastBackupAt!).inDays >= 30;
   }
 
-  // ── Panic Mode onboarding banner ──────────────────────────────────────────
+  // â”€â”€ Panic Mode onboarding banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _loadPanicBannerStatus() async {
     final prefs = await SharedPreferences.getInstance();
@@ -88,15 +102,63 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _showPanicModeBanner = false);
   }
 
+  Future<void> _loadRecentlyUsedPreferences() async {
+    final provider = context.read<PasswordProvider>();
+    final hidden = await _recentlyUsedService.isHidden();
+    final ids = await _recentlyUsedService.getTopIds(
+      allowedIds: provider.passwords.map((item) => item.id).toSet(),
+      limit: 5,
+    );
+    if (!mounted) return;
+    setState(() {
+      _hideRecentlyUsed = hidden;
+      _recentlyUsedIds = ids;
+    });
+  }
+
+  Future<void> _markEntryAccessed(String passwordId) async {
+    final provider = context.read<PasswordProvider>();
+    await _recentlyUsedService.markAccessed(passwordId);
+    final ids = await _recentlyUsedService.getTopIds(
+      allowedIds: provider.passwords.map((item) => item.id).toSet(),
+      limit: 5,
+    );
+    if (!mounted) return;
+    setState(() => _recentlyUsedIds = ids);
+  }
+
+  Future<void> _setHideRecentlyUsed(bool hidden) async {
+    await _recentlyUsedService.setHidden(hidden);
+    if (!mounted) return;
+    setState(() => _hideRecentlyUsed = hidden);
+  }
+
+  Future<void> _refreshAutofillStatus() async {
+    final supported = await _credentialProvider.isSupported();
+    if (!supported) {
+      if (!mounted) return;
+      setState(() => _showAutofillSetupCard = false);
+      return;
+    }
+
+    final enabled = await _credentialProvider.isEnabled();
+    if (!mounted) return;
+    setState(() => _showAutofillSetupCard = !enabled);
+  }
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    for (final timer in _copyCountdownTimers.values) {
+      timer.cancel();
+    }
+    _copyCountdownTimers.clear();
     _lockFacade.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
               );
               _loadBackupStatus();
               _loadPanicBannerStatus();
+              _refreshAutofillStatus();
             },
           ),
         ],
@@ -136,23 +199,40 @@ class _HomeScreenState extends State<HomeScreen> {
             hasActiveRefinement: hasActiveRefinement,
             visibleItemsCount: passwords.length,
           );
+          final recentById = <String, PasswordModel>{
+            for (final item in passwords) item.id: item,
+          };
+          final recentItems = _recentlyUsedIds
+              .map((id) => recentById[id])
+              .whereType<PasswordModel>()
+              .take(5)
+              .toList(growable: false);
+          final recentIds = recentItems.map((item) => item.id).toSet();
+          final remainingItems = _hideRecentlyUsed
+              ? passwords
+              : passwords
+                  .where((item) => !recentIds.contains(item.id))
+                  .toList(growable: false);
 
           return Column(
             children: [
-              // ── Panic mode active warning (decoy vault is open) ──────────
+              // â”€â”€ Panic mode active warning (decoy vault is open) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               if (provider.isPanicMode) _buildPanicActiveBanner(context),
 
-              // ── Backup reminder ──────────────────────────────────────────
+              if (!provider.isPanicMode && _showAutofillSetupCard)
+                _buildAutofillSetupBanner(context),
+
+              // â”€â”€ Backup reminder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               if (!provider.isPanicMode && _shouldShowBackupBanner)
                 _buildBackupBanner(context),
 
-              // ── Panic Mode onboarding (only when vault has items) ────────
+              // â”€â”€ Panic Mode onboarding (only when vault has items) â”€â”€â”€â”€â”€â”€â”€â”€
               if (!provider.isPanicMode &&
                   _showPanicModeBanner &&
                   provider.totalPasswordsCount > 0)
                 _buildPanicOnboardingBanner(context),
 
-              // ── Search + filter header ───────────────────────────────────
+              // â”€â”€ Search + filter header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               _buildHeaderSection(
                 context: context,
                 provider: provider,
@@ -160,13 +240,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 visibleItemsCount: passwords.length,
               ),
 
-              // ── Main content ─────────────────────────────────────────────
+              // â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Expanded(
                 child: _buildContentByState(
                   context: context,
                   state: contentState,
                   provider: provider,
-                  passwords: passwords,
+                  passwords: remainingItems,
+                  recentPasswords: recentItems,
                 ),
               ),
             ],
@@ -196,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Panic mode ACTIVE banner ──────────────────────────────────────────────
+  // â”€â”€ Panic mode ACTIVE banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildPanicActiveBanner(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -216,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'Privacy mode active — decoy vault shown',
+              'Privacy mode active â€” decoy vault shown',
               style: textTheme.labelSmall?.copyWith(
                 color: semanticColors.warning,
                 fontWeight: FontWeight.w600,
@@ -228,7 +309,64 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Backup reminder banner ────────────────────────────────────────────────
+  Widget _buildAutofillSetupBanner(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: double.infinity,
+      color: colorScheme.secondaryContainer.withValues(alpha: 0.55),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.touch_app_outlined, size: 16, color: colorScheme.primary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Autofill not enabled for OneRule',
+              style: textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSecondaryContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AutofillSetupScreen(),
+                ),
+              );
+              _refreshAutofillStatus();
+            },
+            child: Text(
+              'Set up',
+              style: textTheme.labelSmall?.copyWith(
+                color: colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // â”€â”€ Backup reminder banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildBackupBanner(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -251,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Text(
               isNeverBacked
-                  ? 'No backup yet — export your vault in Settings'
+                  ? 'No backup yet â€” export your vault in Settings'
                   : 'Last backup was over 30 days ago',
               style: textTheme.labelSmall?.copyWith(
                 color: colorScheme.onPrimaryContainer,
@@ -296,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Panic Mode onboarding banner ──────────────────────────────────────────
+  // â”€â”€ Panic Mode onboarding banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildPanicOnboardingBanner(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -382,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Header: search + filters ──────────────────────────────────────────────
+  // â”€â”€ Header: search + filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildHeaderSection({
     required BuildContext context,
@@ -538,7 +676,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Content router ────────────────────────────────────────────────────────
+  // â”€â”€ Content router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   _HomeContentState _resolveContentState({
     required PasswordProvider provider,
@@ -558,6 +696,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required _HomeContentState state,
     required PasswordProvider provider,
     required List<PasswordModel> passwords,
+    required List<PasswordModel> recentPasswords,
   }) {
     switch (state) {
       case _HomeContentState.loading:
@@ -575,17 +714,74 @@ class _HomeScreenState extends State<HomeScreen> {
       case _HomeContentState.noResults:
         return NoResultsState(onClear: () => _clearSearchAndFilters(provider));
       case _HomeContentState.list:
-        return ListView.builder(
-          itemCount: passwords.length,
+        return ListView(
           padding: const EdgeInsets.only(
             top: AppSpacing.sm,
             bottom: AppSpacing.giant + AppSpacing.giant + AppSpacing.lg,
           ),
-          itemBuilder: (context, index) {
-            return _buildPasswordTile(context, passwords[index], provider);
-          },
+          children: [
+            if (recentPasswords.isNotEmpty) ...[
+              _buildRecentlyUsedHeader(context),
+              if (!_hideRecentlyUsed)
+                ...recentPasswords.map(
+                  (item) => _buildPasswordTile(context, item, provider),
+                ),
+            ],
+            if (passwords.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.xs,
+                ),
+                child: Text(
+                  'All Entries',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ...passwords
+                .map((item) => _buildPasswordTile(context, item, provider)),
+          ],
         );
     }
+  }
+
+  Widget _buildRecentlyUsedHeader(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.xs,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Recently Used',
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => _setHideRecentlyUsed(!_hideRecentlyUsed),
+            icon: Icon(
+              _hideRecentlyUsed
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              size: 16,
+            ),
+            label: Text(_hideRecentlyUsed ? 'Show' : 'Hide'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _applyCategoryFilter(PasswordProvider provider, String category) {
@@ -645,7 +841,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Password card ─────────────────────────────────────────────────────────
+  void _openPasswordDetails(BuildContext context, PasswordModel password) {
+    _markEntryAccessed(password.id);
+    _openAddEditSheet(context, password);
+  }
+
+  // â”€â”€ Password card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildPasswordTile(
     BuildContext context,
@@ -654,325 +855,491 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     final loc = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
     final semanticColors =
         theme.extension<AppSemanticColors>() ?? AppTheme.fallbackSemanticColors;
     final media = MediaQuery.of(context);
     final clampedScale =
         media.textScaler.scale(1.0).clamp(1.0, 1.15).toDouble();
 
-    return Dismissible(
-      key: Key(password.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: semanticColors.destructive.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(AppRadius.large),
-        ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: AppSpacing.xl),
-        child: Icon(
-          Icons.delete_outline_rounded,
-          color: colorScheme.onError,
-          size: AppSpacing.xl + AppSpacing.xs,
-        ),
-      ),
-      confirmDismiss: (_) async {
-        return await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: Text(loc.deletePasswordTitle),
-                content: Text(loc.deletePasswordMessage),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(loc.cancel),
-                  ),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor:
-                          semanticColors.destructive.withValues(alpha: 0.85),
-                    ),
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: Text(loc.delete),
-                  ),
-                ],
-              ),
-            ) ??
-            false;
-      },
-      onDismissed: (_) {
-        provider.deletePassword(password.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(loc.passwordDeleted)),
-        );
-      },
-      child: MediaQuery(
-        data: media.copyWith(textScaler: TextScaler.linear(clampedScale)),
-        child: Container(
-          margin: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.sm,
-          ),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(AppRadius.large),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.shadow.withValues(alpha: 0.07),
-                blurRadius: AppSpacing.md,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.only(
-              left: AppSpacing.lg,
-              right: AppSpacing.xs,
-              top: AppSpacing.sm,
-              bottom: AppSpacing.sm,
-            ),
-            leading: Container(
-              padding: const EdgeInsets.all(AppSpacing.md - 2),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(AppRadius.medium),
-              ),
-              child: Icon(
-                PasswordCategories.iconFor(password.category),
-                color: colorScheme.primary,
-                size: 22,
-              ),
-            ),
-            title: Text(
-              password.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.titleSmall?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 2),
-                Text(
-                  password.username,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm - 2,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer
-                            .withValues(alpha: 0.7),
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.small - 2),
-                      ),
-                      child: Text(
-                        PasswordCategories.labelFor(loc, password.category)
-                            .toUpperCase(),
-                        style: textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSecondaryContainer,
-                          fontSize: 10,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ),
-                    if (password.lastModified != null) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      Flexible(
-                        child: Text(
-                          _localizedShortDate(context, password.lastModified!),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.6),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-            trailing: _buildActionMenu(
-              context: context,
-              password: password,
-              provider: provider,
-              loc: loc,
-              semanticColors: semanticColors,
-            ),
-            onTap: () => _openAddEditSheet(context, password),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Three-dot action menu ─────────────────────────────────────────────────
-
-  Widget _buildActionMenu({
-    required BuildContext context,
-    required PasswordModel password,
-    required PasswordProvider provider,
-    required AppLocalizations loc,
-    required AppSemanticColors semanticColors,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return PopupMenuButton<_CardAction>(
-      icon: Icon(
-        Icons.more_vert_rounded,
-        color: colorScheme.onSurfaceVariant,
-        size: 20,
-      ),
-      padding: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.medium),
-      ),
-      onSelected: (action) => _handleCardAction(
-        context: context,
-        action: action,
+    final countdownSeconds = _copyCountdownById[password.id];
+    return MediaQuery(
+      data: media.copyWith(textScaler: TextScaler.linear(clampedScale)),
+      child: _VaultPasswordCard(
+        key: ValueKey<String>('vault-card-${password.id}'),
         password: password,
-        provider: provider,
-        loc: loc,
+        maskedUsername: _maskUsername(password.username),
+        countdownSeconds: countdownSeconds,
         semanticColors: semanticColors,
-      ),
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: _CardAction.copyUsername,
-          child: _menuItem(
-            icon: Icons.alternate_email_rounded,
-            label: 'Copy username',
-            color: colorScheme.onSurface,
-          ),
-        ),
-        PopupMenuItem(
-          value: _CardAction.copyPassword,
-          child: _menuItem(
-            icon: Icons.copy_rounded,
-            label: 'Copy password',
-            color: colorScheme.onSurface,
-          ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-          value: _CardAction.edit,
-          child: _menuItem(
-            icon: Icons.edit_outlined,
-            label: loc.update,
-            color: colorScheme.onSurface,
-          ),
-        ),
-        PopupMenuItem(
-          value: _CardAction.delete,
-          child: _menuItem(
-            icon: Icons.delete_outline_rounded,
-            label: loc.delete,
-            color: semanticColors.destructive,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _menuItem({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: AppSpacing.md),
-        Text(label, style: TextStyle(color: color)),
-      ],
-    );
-  }
-
-  Future<void> _handleCardAction({
-    required BuildContext context,
-    required _CardAction action,
-    required PasswordModel password,
-    required PasswordProvider provider,
-    required AppLocalizations loc,
-    required AppSemanticColors semanticColors,
-  }) async {
-    switch (action) {
-      case _CardAction.copyUsername:
-        _lockFacade.copyUsernameToClipboard(
-          context: context,
-          username: password.username,
-          title: password.title,
-        );
-      case _CardAction.copyPassword:
-        _lockFacade.copyPasswordToClipboard(
-          context: context,
-          password: password.password,
-          title: password.title,
-        );
-      case _CardAction.edit:
-        _openAddEditSheet(context, password);
-      case _CardAction.delete:
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(loc.deletePasswordTitle),
-            content: Text(loc.deletePasswordMessage),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(loc.cancel),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor:
-                      semanticColors.destructive.withValues(alpha: 0.85),
-                ),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(loc.delete),
-              ),
-            ],
-          ),
-        );
-        if (confirmed == true && context.mounted) {
-          provider.deletePassword(password.id);
+        onOpen: () => _openPasswordDetails(context, password),
+        onCopyUsername: () => _copyUsernameFromCard(password),
+        onCopyPassword: () => _copyPasswordFromCard(password),
+        onQuickCopyPassword: () => _copyPasswordFromCard(password),
+        onEdit: () => _openPasswordDetails(context, password),
+        onDeleteTap: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(loc.passwordDeleted)),
+            const SnackBar(content: Text('Hold Delete to confirm.')),
           );
+        },
+        onDeleteHold: () => _deletePasswordWithHold(
+          context: context,
+          provider: provider,
+          password: password,
+          loc: loc,
+        ),
+      ),
+    );
+  }
+
+  // â”€â”€ Three-dot action menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  Future<void> _deletePasswordWithHold({
+    required BuildContext context,
+    required PasswordProvider provider,
+    required PasswordModel password,
+    required AppLocalizations loc,
+  }) async {
+    await provider.deletePassword(password.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(loc.passwordDeleted)),
+    );
+  }
+
+  Future<void> _copyUsernameFromCard(PasswordModel password) async {
+    _lockFacade.copyUsernameToClipboard(
+      context: context,
+      username: password.username,
+      title: password.title,
+    );
+    await _markEntryAccessed(password.id);
+    _startCopyFeedback(password.id);
+  }
+
+  Future<void> _copyPasswordFromCard(PasswordModel password) async {
+    _lockFacade.copyPasswordToClipboard(
+      context: context,
+      password: password.password,
+      title: password.title,
+    );
+    await _markEntryAccessed(password.id);
+    _startCopyFeedback(password.id);
+  }
+
+  void _startCopyFeedback(String passwordId) {
+    final countdownSeconds = _readClipboardAutoClearSeconds();
+    _copyCountdownTimers[passwordId]?.cancel();
+
+    if (countdownSeconds <= 0) {
+      if (!mounted) return;
+      setState(() => _copyCountdownById[passwordId] = 0);
+      _copyCountdownTimers[passwordId] = Timer(
+        const Duration(seconds: 2),
+        () {
+          if (!mounted) return;
+          setState(() => _copyCountdownById.remove(passwordId));
+          _copyCountdownTimers.remove(passwordId);
+        },
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _copyCountdownById[passwordId] = countdownSeconds);
+    _copyCountdownTimers[passwordId] = Timer.periodic(
+      const Duration(seconds: 1),
+      (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
         }
+        final current = _copyCountdownById[passwordId];
+        if (current == null || current <= 1) {
+          timer.cancel();
+          setState(() => _copyCountdownById.remove(passwordId));
+          _copyCountdownTimers.remove(passwordId);
+          return;
+        }
+        setState(() => _copyCountdownById[passwordId] = current - 1);
+      },
+    );
+  }
+
+  int _readClipboardAutoClearSeconds() {
+    try {
+      final provider = context.read<SecuritySettingsProvider>();
+      return provider.clipboardAutoClearSeconds;
+    } catch (_) {
+      return SecuritySettingsProvider.defaultClipboardAutoClearSeconds;
     }
   }
 
-  String _localizedShortDate(BuildContext context, DateTime value) {
-    final locale = Localizations.localeOf(context).toString();
-    return DateFormat.yMd(locale).format(value.toLocal());
+  String _maskUsername(String username) {
+    final normalized = username.trim();
+    if (normalized.isEmpty) return '••••';
+
+    final atIndex = normalized.indexOf('@');
+    if (atIndex > 0 && atIndex < normalized.length - 1) {
+      final local = normalized.substring(0, atIndex);
+      final domain = normalized.substring(atIndex + 1);
+      final localMaskLength = local.length > 1 ? local.length - 1 : 1;
+      final localMasked = '${local[0]}${'•' * localMaskLength}';
+      return '$localMasked@$domain';
+    }
+
+    if (normalized.length <= 2) {
+      return '•' * normalized.length;
+    }
+    return '${normalized[0]}${'•' * (normalized.length - 2)}${normalized[normalized.length - 1]}';
   }
 }
 
-// ── Card action enum ──────────────────────────────────────────────────────────
+class _VaultPasswordCard extends StatefulWidget {
+  const _VaultPasswordCard({
+    super.key,
+    required this.password,
+    required this.maskedUsername,
+    required this.countdownSeconds,
+    required this.semanticColors,
+    required this.onOpen,
+    required this.onCopyUsername,
+    required this.onCopyPassword,
+    required this.onQuickCopyPassword,
+    required this.onEdit,
+    required this.onDeleteTap,
+    required this.onDeleteHold,
+  });
 
-enum _CardAction { copyUsername, copyPassword, edit, delete }
+  final PasswordModel password;
+  final String maskedUsername;
+  final int? countdownSeconds;
+  final AppSemanticColors semanticColors;
+  final VoidCallback onOpen;
+  final VoidCallback onCopyUsername;
+  final VoidCallback onCopyPassword;
+  final VoidCallback onQuickCopyPassword;
+  final VoidCallback onEdit;
+  final VoidCallback onDeleteTap;
+  final VoidCallback onDeleteHold;
 
-// ── Supporting state widgets ──────────────────────────────────────────────────
+  @override
+  State<_VaultPasswordCard> createState() => _VaultPasswordCardState();
+}
+
+class _VaultPasswordCardState extends State<_VaultPasswordCard> {
+  static const double _maxRightSwipe = 96;
+  static const double _maxLeftSwipe = -148;
+  static const double _rightCopyThreshold = 64;
+  static const double _leftRevealThreshold = -56;
+
+  double _dragOffset = 0;
+
+  void _closeActions() {
+    if (_dragOffset == 0) return;
+    setState(() => _dragOffset = 0);
+  }
+
+  void _handleHorizontalDragUpdate(DragUpdateDetails details) {
+    final next = (_dragOffset + details.delta.dx).clamp(
+      _maxLeftSwipe,
+      _maxRightSwipe,
+    );
+    setState(() => _dragOffset = next);
+  }
+
+  void _handleHorizontalDragEnd(DragEndDetails details) {
+    if (_dragOffset >= _rightCopyThreshold) {
+      widget.onQuickCopyPassword();
+      setState(() => _dragOffset = 0);
+      return;
+    }
+    if (_dragOffset <= _leftRevealThreshold) {
+      setState(() => _dragOffset = _maxLeftSwipe);
+      return;
+    }
+    setState(() => _dragOffset = 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final hasCopyFeedback = widget.countdownSeconds != null;
+    final countdown = widget.countdownSeconds ?? 0;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
+      height: 92,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.large),
+                    ),
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(left: AppSpacing.lg),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.copy_rounded,
+                          color: colorScheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          'Quick copy password',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 148,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: widget.semanticColors.destructive
+                          .withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(AppRadius.large),
+                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          key: ValueKey<String>(
+                            'edit-action-${widget.password.id}',
+                          ),
+                          tooltip: 'Edit ${widget.password.title}',
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            color: colorScheme.onSurface,
+                          ),
+                          constraints: const BoxConstraints.tightFor(
+                            width: 48,
+                            height: 48,
+                          ),
+                          onPressed: () {
+                            _closeActions();
+                            widget.onEdit();
+                          },
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Semantics(
+                          button: true,
+                          label: 'Hold to delete ${widget.password.title}',
+                          hint: 'Long press to confirm delete.',
+                          child: GestureDetector(
+                            onTap: widget.onDeleteTap,
+                            onLongPress: () {
+                              _closeActions();
+                              widget.onDeleteHold();
+                            },
+                            child: Container(
+                              key: ValueKey<String>(
+                                'delete-action-${widget.password.id}',
+                              ),
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: widget.semanticColors.destructive
+                                    .withValues(alpha: 0.2),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.medium),
+                              ),
+                              child: Icon(
+                                Icons.delete_outline_rounded,
+                                color: widget.semanticColors.destructive,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            transform: Matrix4.translationValues(_dragOffset, 0, 0),
+            child: GestureDetector(
+              onHorizontalDragUpdate: _handleHorizontalDragUpdate,
+              onHorizontalDragEnd: _handleHorizontalDragEnd,
+              onTap: () {
+                if (_dragOffset != 0) {
+                  _closeActions();
+                  return;
+                }
+                widget.onOpen();
+              },
+              child: Semantics(
+                button: true,
+                label:
+                    '${widget.password.title}, masked username ${widget.maskedUsername}',
+                hint:
+                    'Swipe right to copy password. Swipe left to reveal edit and delete actions.',
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.large),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.shadow.withValues(alpha: 0.07),
+                        blurRadius: AppSpacing.md,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.sm + 2,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer
+                              .withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
+                        ),
+                        child: Icon(
+                          PasswordCategories.iconFor(widget.password.category),
+                          color: colorScheme.primary,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              widget.password.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.serviceName?.copyWith(
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.maskedUsername,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.usernameMasked?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            if (hasCopyFeedback) ...[
+                              const SizedBox(height: AppSpacing.xs),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.secondaryContainer,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.small),
+                                ),
+                                child: Text(
+                                  countdown > 0
+                                      ? 'Copied • Clears in ${countdown}s'
+                                      : 'Copied',
+                                  style: textTheme.metadata?.copyWith(
+                                    color: colorScheme.onSecondaryContainer,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      _CopyActionButton(
+                        key: ValueKey<String>(
+                          'copy-username-${widget.password.id}',
+                        ),
+                        icon: Icons.alternate_email_rounded,
+                        semanticLabel:
+                            'Copy username for ${widget.password.title}',
+                        tooltip: 'Copy username',
+                        onPressed: widget.onCopyUsername,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      _CopyActionButton(
+                        key: ValueKey<String>(
+                          'copy-password-${widget.password.id}',
+                        ),
+                        icon: Icons.copy_rounded,
+                        semanticLabel:
+                            'Copy password for ${widget.password.title}',
+                        tooltip: 'Copy password',
+                        onPressed: widget.onCopyPassword,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CopyActionButton extends StatelessWidget {
+  const _CopyActionButton({
+    super.key,
+    required this.icon,
+    required this.semanticLabel,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String semanticLabel;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+        style: IconButton.styleFrom(
+          backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.7),
+          foregroundColor: colorScheme.primary,
+        ),
+        icon: Icon(icon, size: 19),
+      ),
+    );
+  }
+}
+
+// â”€â”€ Supporting state widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class LoadingState extends StatelessWidget {
   const LoadingState({super.key});
@@ -1000,43 +1367,10 @@ class LoadingState extends StatelessWidget {
   }
 }
 
-class EmptyVaultState extends StatefulWidget {
+class EmptyVaultState extends StatelessWidget {
   const EmptyVaultState({super.key, required this.onAddItem});
 
   final VoidCallback onAddItem;
-
-  @override
-  State<EmptyVaultState> createState() => _EmptyVaultStateState();
-}
-
-class _EmptyVaultStateState extends State<EmptyVaultState>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulseController;
-  late final Animation<double> _outerScale;
-  late final Animation<double> _outerOpacity;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2400),
-    );
-    _pulseController.forward();
-
-    _outerScale = Tween<double>(begin: 0.88, end: 1.12).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-    _outerOpacity = Tween<double>(begin: 0.04, end: 0.12).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1044,6 +1378,7 @@ class _EmptyVaultStateState extends State<EmptyVaultState>
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
+    final colors = context.appColors;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1056,51 +1391,25 @@ class _EmptyVaultStateState extends State<EmptyVaultState>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AnimatedBuilder(
-                      animation: _pulseController,
-                      builder: (context, _) {
-                        return SizedBox(
-                          width: 140,
-                          height: 140,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Transform.scale(
-                                scale: _outerScale.value,
-                                child: Container(
-                                  width: 140,
-                                  height: 140,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: colorScheme.primary
-                                        .withValues(alpha: _outerOpacity.value),
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                width: 108,
-                                height: 108,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: colorScheme.primary
-                                      .withValues(alpha: 0.08),
-                                ),
-                              ),
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: colorScheme.primaryContainer
-                                      .withValues(alpha: 0.6),
-                                ),
-                              ),
-                              Icon(Icons.lock_rounded,
-                                  size: 36, color: colorScheme.primary),
-                            ],
-                          ),
-                        );
-                      },
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: colors.cardSlate,
+                        borderRadius: BorderRadius.circular(AppRadius.large),
+                        border: Border.all(color: colors.subtleBorder),
+                      ),
+                      child: SvgPicture.asset(
+                        'assets/illustrations/empty_vault.svg',
+                        width: 172,
+                        height: 132,
+                        fit: BoxFit.contain,
+                        semanticsLabel: 'Empty vault illustration',
+                        placeholderBuilder: (_) => Icon(
+                          Icons.lock_outline_rounded,
+                          size: 64,
+                          color: colorScheme.primary,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     Text(
@@ -1123,7 +1432,7 @@ class _EmptyVaultStateState extends State<EmptyVaultState>
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     FilledButton.icon(
-                      onPressed: widget.onAddItem,
+                      onPressed: onAddItem,
                       icon: const Icon(Icons.add_rounded, size: 20),
                       label: const Text('Add First Item'),
                       style: FilledButton.styleFrom(

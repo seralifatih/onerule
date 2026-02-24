@@ -2,7 +2,7 @@ import java.util.Properties
 import java.io.FileInputStream
 
 val autofillMvpEnabled = (project.findProperty("oneruleAutofillMvpEnabled") as String?)
-    ?.toBooleanStrictOrNull() ?: false
+    ?.toBooleanStrictOrNull() ?: true
 
 // Keystore dosyasını yükleme işlemi
 val keystorePropertiesFile = rootProject.file("key.properties")
@@ -29,6 +29,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -77,6 +78,11 @@ android {
             isShrinkResources = false
         }
     }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
 
 flutter {

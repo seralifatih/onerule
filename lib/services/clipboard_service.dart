@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+enum ClipboardPayloadType { password, username }
 
 class ClipboardService {
   ClipboardService._();
@@ -12,7 +15,12 @@ class ClipboardService {
   static const String copiedToClipboardKey = 'copiedToClipboard';
   static const String usernameCopiedKey = 'usernameCopied';
 
-  static const Duration _autoClearDelay = Duration(seconds: 30);
+  static const String _clipboardAutoClearSecondsKey =
+      'clipboardAutoClearSeconds';
+  static const String _applyClipboardPolicyToUsernameKey =
+      'applyClipboardPolicyToUsername';
+  static const int _defaultClipboardAutoClearSeconds = 30;
+  static const bool _defaultApplyClipboardPolicyToUsername = false;
   static const Duration _snackDuration = Duration(seconds: 2);
 
   Timer? _autoClearTimer;
@@ -22,17 +30,23 @@ class ClipboardService {
     BuildContext context,
     String value, {
     required String successMessageKey,
+    ClipboardPayloadType payloadType = ClipboardPayloadType.password,
   }) async {
     await Clipboard.setData(ClipboardData(text: value));
     _lastCopiedValue = value;
 
+    final policy = await _readClipboardPolicy();
     _autoClearTimer?.cancel();
-    _autoClearTimer = Timer(_autoClearDelay, () async {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      if (data?.text == _lastCopiedValue && data?.text == value) {
-        await Clipboard.setData(const ClipboardData(text: ''));
-      }
-    });
+
+    final shouldAutoClear = _shouldAutoClear(payloadType, policy);
+    if (shouldAutoClear) {
+      _autoClearTimer = Timer(Duration(seconds: policy.seconds), () async {
+        final data = await Clipboard.getData(Clipboard.kTextPlain);
+        if (data?.text == _lastCopiedValue && data?.text == value) {
+          await Clipboard.setData(const ClipboardData(text: ''));
+        }
+      });
+    }
 
     if (!context.mounted) return;
     _showSnackBar(
@@ -49,7 +63,7 @@ class ClipboardService {
       case copiedToClipboardKey:
         return loc.copiedToClipboard;
       case usernameCopiedKey:
-        return loc.usernameCopied;
+        return loc.copiedToClipboard;
       default:
         return loc.copiedToClipboard;
     }
@@ -77,4 +91,35 @@ class ClipboardService {
         ),
       );
   }
+
+  Future<_ClipboardPolicy> _readClipboardPolicy() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seconds = prefs.getInt(_clipboardAutoClearSecondsKey) ??
+        _defaultClipboardAutoClearSeconds;
+    final applyToUsername = prefs.getBool(_applyClipboardPolicyToUsernameKey) ??
+        _defaultApplyClipboardPolicyToUsername;
+    return _ClipboardPolicy(seconds: seconds, applyToUsername: applyToUsername);
+  }
+
+  bool _shouldAutoClear(
+    ClipboardPayloadType payloadType,
+    _ClipboardPolicy policy,
+  ) {
+    if (policy.seconds <= 0) return false;
+    if (payloadType == ClipboardPayloadType.username &&
+        !policy.applyToUsername) {
+      return false;
+    }
+    return true;
+  }
+}
+
+class _ClipboardPolicy {
+  const _ClipboardPolicy({
+    required this.seconds,
+    required this.applyToUsername,
+  });
+
+  final int seconds;
+  final bool applyToUsername;
 }

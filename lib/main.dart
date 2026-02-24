@@ -1,48 +1,42 @@
+import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:provider/provider.dart';
-import 'package:screen_protector/screen_protector.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:screen_protector/screen_protector.dart';
 
-import 'models/password_model.dart';
-import 'providers/password_provider.dart';
-import 'providers/theme_provider.dart';
 import 'providers/language_provider.dart';
+import 'providers/password_provider.dart';
 import 'providers/security_settings_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/app_facade.dart';
+import 'services/backup_reminder_service.dart';
+import 'services/credential_provider.dart';
 import 'services/local_log_service.dart';
-import 'services/sqlcipher_spike_service.dart';
+import 'services/secure_storage_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocalLogService.instance.initializeGlobalErrorHandlers();
-  await SqlCipherSpikeService().runOnceIfEnabled();
+  await BackupReminderService.instance.initialize();
 
-  await Hive.initFlutter();
-  Hive.registerAdapter(PasswordModelAdapter());
-
-  // --- EKRAN GÜVENLİĞİ (TEKRAR AKTİF) ---
+  // Enable mobile screen protections.
   if (Platform.isAndroid || Platform.isIOS) {
-    // Screenshot engelleme
     await ScreenProtector.preventScreenshotOn();
-
-    //App switcher blur + ekran kaydı koruması
     await ScreenProtector.protectDataLeakageOn();
     await ScreenProtector.protectDataLeakageWithBlur();
 
-    // iOS için ekran kaydı dinleyicisi
     ScreenProtector.addListener(() {}, (isCaptured) {
       if (isCaptured) {
         ScreenProtector.protectDataLeakageWithBlur();
       }
     });
   }
-  // --------------------------------------
 
   runApp(
     MultiProvider(
@@ -68,8 +62,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'OneRule',
       debugShowCheckedModeBanner: false,
-
-      // 🌍 Localization
       locale: languageProvider.locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -78,21 +70,18 @@ class MyApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-
       themeMode: themeProvider.themeMode,
-
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-
       home: const LifecycleManager(child: LoginScreen()),
     );
   }
 }
 
-// 🔐 App lifecycle lock manager
 class LifecycleManager extends StatefulWidget {
-  final Widget child;
   const LifecycleManager({super.key, required this.child});
+
+  final Widget child;
 
   @override
   State<LifecycleManager> createState() => _LifecycleManagerState();
@@ -113,7 +102,6 @@ class _LifecycleManagerState extends State<LifecycleManager>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _lockFacade.dispose();
-    // Listener'ı sadece mobilde kaldır
     if (Platform.isAndroid || Platform.isIOS) {
       ScreenProtector.removeListener();
     }
@@ -130,8 +118,10 @@ class _LifecycleManagerState extends State<LifecycleManager>
       final timeoutSeconds =
           context.read<SecuritySettingsProvider>().autoLockTimeoutSeconds;
       final diff = DateTime.now().difference(_lastPausedTime!);
-      // Eğer süre aşılmışsa Login ekranına at
       if (diff.inSeconds > timeoutSeconds) {
+        SecureStorageService().clearSessionKey();
+        unawaited(PlatformCredentialProvider().onVaultLocked());
+        unawaited(context.read<PasswordProvider>().lockForSession());
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
           (_) => false,
@@ -144,7 +134,6 @@ class _LifecycleManagerState extends State<LifecycleManager>
   Widget build(BuildContext context) => widget.child;
 }
 
-// ⏳ Initialization Screen
 class InitializationScreen extends StatefulWidget {
   const InitializationScreen({super.key});
 
@@ -163,23 +152,20 @@ class _InitializationScreenState extends State<InitializationScreen> {
     final provider = context.read<PasswordProvider>();
 
     try {
-      // Panik modunda değilse verileri yükle
       if (!provider.isPanicMode) {
         await provider.init().timeout(const Duration(seconds: 5));
       }
     } catch (_) {
       if (!mounted) return;
 
-      // Hata durumunda kullanıcıya sor
       final action = await _showInitErrorDialog();
       if (!mounted) return;
 
       if (action == _InitErrorAction.retry) {
-        _initialize(); // Tekrar dene
+        _initialize();
         return;
       }
 
-      // Vazgeçerse Login ekranına dön
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
@@ -188,7 +174,6 @@ class _InitializationScreenState extends State<InitializationScreen> {
 
     if (!mounted) return;
 
-    // Her şey yolundaysa Home ekranına git
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const HomeScreen()),
     );

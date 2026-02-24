@@ -5,6 +5,58 @@ import 'app_radius.dart';
 import 'app_typography.dart';
 
 @immutable
+class AppColorTokens extends ThemeExtension<AppColorTokens> {
+  const AppColorTokens({
+    required this.scaffoldNavy,
+    required this.cardSlate,
+    required this.accentCyan,
+    required this.subtleBorder,
+    required this.metadataText,
+  });
+
+  final Color scaffoldNavy;
+  final Color cardSlate;
+  final Color accentCyan;
+  final Color subtleBorder;
+  final Color metadataText;
+
+  @override
+  AppColorTokens copyWith({
+    Color? scaffoldNavy,
+    Color? cardSlate,
+    Color? accentCyan,
+    Color? subtleBorder,
+    Color? metadataText,
+  }) {
+    return AppColorTokens(
+      scaffoldNavy: scaffoldNavy ?? this.scaffoldNavy,
+      cardSlate: cardSlate ?? this.cardSlate,
+      accentCyan: accentCyan ?? this.accentCyan,
+      subtleBorder: subtleBorder ?? this.subtleBorder,
+      metadataText: metadataText ?? this.metadataText,
+    );
+  }
+
+  @override
+  AppColorTokens lerp(ThemeExtension<AppColorTokens>? other, double t) {
+    if (other is! AppColorTokens) {
+      return this;
+    }
+
+    return AppColorTokens(
+      scaffoldNavy:
+          Color.lerp(scaffoldNavy, other.scaffoldNavy, t) ?? scaffoldNavy,
+      cardSlate: Color.lerp(cardSlate, other.cardSlate, t) ?? cardSlate,
+      accentCyan: Color.lerp(accentCyan, other.accentCyan, t) ?? accentCyan,
+      subtleBorder:
+          Color.lerp(subtleBorder, other.subtleBorder, t) ?? subtleBorder,
+      metadataText:
+          Color.lerp(metadataText, other.metadataText, t) ?? metadataText,
+    );
+  }
+}
+
+@immutable
 class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   const AppSemanticColors({
     required this.authGradientStart,
@@ -58,29 +110,51 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
 
 class AppTheme {
   const AppTheme._();
+
+  static const AppColorTokens fallbackColorTokens = AppColorTokens(
+    scaffoldNavy: Color(0xFF0C1A2B),
+    cardSlate: Color(0xFF16273A),
+    accentCyan: Color(0xFF22D3EE),
+    subtleBorder: Color(0x333B82F6),
+    metadataText: Color(0xFF93A4B8),
+  );
+
   static const AppSemanticColors fallbackSemanticColors = AppSemanticColors(
     authGradientStart: Color(0xFF0F172A),
-    authGradientEnd: Color(0xFF1E1B4B),
+    authGradientEnd: Color(0xFF123547),
     destructive: Color(0xFFDC2626),
     success: Color(0xFF16A34A),
     warning: Color(0xFFF59E0B),
   );
 
   static ThemeData light() {
-    const scheme = ColorScheme.light(
-      primary: Color(0xFF0284C7),
-      secondary: Color(0xFF6366F1),
-      surface: Colors.white,
-      onSurface: Color(0xFF1E293B),
+    const tokens = AppColorTokens(
+      scaffoldNavy: Color(0xFFE7EFF7),
+      cardSlate: Color(0xFFF5FAFE),
+      accentCyan: Color(0xFF0891B2),
+      subtleBorder: Color(0x220F172A),
+      metadataText: Color(0xFF526173),
+    );
+
+    final scheme = ColorScheme.light(
+      primary: tokens.accentCyan,
+      secondary: const Color(0xFF0EA5E9),
+      surface: tokens.cardSlate,
+      onSurface: const Color(0xFF0F172A),
+      onPrimary: Colors.white,
+      outlineVariant: const Color(0x260F172A),
+      primaryContainer: const Color(0xFFCCF0F8),
+      secondaryContainer: const Color(0xFFD9F3FA),
     );
 
     return _buildTheme(
       brightness: Brightness.light,
-      scaffoldBackgroundColor: const Color(0xFFF1F5F9),
+      scaffoldBackgroundColor: tokens.scaffoldNavy,
       colorScheme: scheme,
+      colorTokens: tokens,
       semanticColors: const AppSemanticColors(
         authGradientStart: Color(0xFF0F172A),
-        authGradientEnd: Color(0xFF1E1B4B),
+        authGradientEnd: Color(0xFF123547),
         destructive: Color(0xFFDC2626),
         success: Color(0xFF16A34A),
         warning: Color(0xFFF59E0B),
@@ -90,20 +164,33 @@ class AppTheme {
   }
 
   static ThemeData dark() {
-    const scheme = ColorScheme.dark(
-      primary: Color(0xFF38BDF8),
-      secondary: Color(0xFF818CF8),
-      surface: Color(0xFF1E293B),
-      onSurface: Colors.white,
+    const tokens = AppColorTokens(
+      scaffoldNavy: Color(0xFF081220),
+      cardSlate: Color(0xFF14273A),
+      accentCyan: Color(0xFF22D3EE),
+      subtleBorder: Color(0x337DD3FC),
+      metadataText: Color(0xFF91A9C3),
+    );
+
+    final scheme = ColorScheme.dark(
+      primary: tokens.accentCyan,
+      secondary: const Color(0xFF67E8F9),
+      surface: tokens.cardSlate,
+      onSurface: const Color(0xFFE6EDF6),
+      onPrimary: const Color(0xFF03222D),
+      outlineVariant: const Color(0x337DD3FC),
+      primaryContainer: const Color(0xFF12435B),
+      secondaryContainer: const Color(0xFF0F364A),
     );
 
     return _buildTheme(
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF0F172A),
+      scaffoldBackgroundColor: tokens.scaffoldNavy,
       colorScheme: scheme,
+      colorTokens: tokens,
       semanticColors: const AppSemanticColors(
-        authGradientStart: Color(0xFF0F172A),
-        authGradientEnd: Color(0xFF1E1B4B),
+        authGradientStart: Color(0xFF081220),
+        authGradientEnd: Color(0xFF123547),
         destructive: Color(0xFFEF4444),
         success: Color(0xFF22C55E),
         warning: Color(0xFFFBBF24),
@@ -116,6 +203,7 @@ class AppTheme {
     required Brightness brightness,
     required Color scaffoldBackgroundColor,
     required ColorScheme colorScheme,
+    required AppColorTokens colorTokens,
     required AppSemanticColors semanticColors,
     required Color appBarTitleColor,
   }) {
@@ -138,21 +226,64 @@ class AppTheme {
         ),
         iconTheme: IconThemeData(color: appBarTitleColor),
       ),
+      dividerColor: colorTokens.subtleBorder,
+      dividerTheme: DividerThemeData(
+        color: colorTokens.subtleBorder,
+        thickness: 1,
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surface,
+        fillColor: colorTokens.cardSlate,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: colorTokens.subtleBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+          borderSide: BorderSide(color: colorTokens.accentCyan, width: 1.7),
         ),
       ),
+      listTileTheme: ListTileThemeData(
+        iconColor: colorScheme.primary,
+        textColor: colorScheme.onSurface,
+      ),
+      cardTheme: CardThemeData(
+        color: colorTokens.cardSlate,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          side: BorderSide(color: colorTokens.subtleBorder),
+        ),
+        margin: EdgeInsets.zero,
+        elevation: AppElevation.low,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: colorTokens.accentCyan,
+          foregroundColor: colorScheme.onPrimary,
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: colorTokens.cardSlate,
+        contentTextStyle: base.textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurface,
+        ),
+        actionTextColor: colorTokens.accentCyan,
+        behavior: SnackBarBehavior.floating,
+      ),
       extensions: <ThemeExtension<dynamic>>[
+        colorTokens,
         semanticColors,
       ],
     );
   }
+}
+
+extension AppThemeBuildContextX on BuildContext {
+  AppColorTokens get appColors =>
+      Theme.of(this).extension<AppColorTokens>() ??
+      AppTheme.fallbackColorTokens;
+
+  AppSemanticColors get appSemanticColors =>
+      Theme.of(this).extension<AppSemanticColors>() ??
+      AppTheme.fallbackSemanticColors;
 }

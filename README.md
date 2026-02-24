@@ -42,22 +42,22 @@ https://seralifatih.github.io/OneRuleWeb/
 
 ---
 
-## 🛡️ Security Architecture
+## 🔒 Security
 
-OneRule follows a local-first security architecture where all critical operations happen on-device.
+- Canonical security spec: [docs/security-architecture.md](docs/security-architecture.md)
+- Vault data at rest: SQLCipher-encrypted SQLite + app-level AES-256-GCM for the sensitive password field
+- PIN/key derivation: PBKDF2-HMAC-SHA256 (100k iterations) with per-install/per-secret salts in secure storage
+- Backup encryption: passphrase-based AES-256-GCM backups (`.onerule`) with PBKDF2-HMAC-SHA256 (200k iterations)
 
-1. **Master Secret Handling**  
-   The user provides a master password/PIN, which is transformed using **PBKDF2-HMAC-SHA256 (100,000 iterations, 256-bit output)** with **per-secret 16-byte random salts stored in secure storage (`masterPinSalt`, `hiveSalt`, `panicPinSalt`)**.
-2. **Vault Encryption**  
-   Vault records are encrypted locally using **HiveAesCipher (AES-256-CBC with PKCS7 padding and a random 16-byte IV)**.
-3. **Integrity Protection**  
-   Encrypted backup payload tampering is detected using **AES-GCM authentication tags (`mac`)**. (Vault storage encryption currently uses AES-CBC without a separate AEAD tag.)
-4. **Key Storage Boundary**  
-   Encryption material is stored using **Flutter Secure Storage (Android `EncryptedSharedPreferences`, backed by Android Keystore)** where applicable.
-5. **Zero-Transmission Principle**  
-   Secrets are never transmitted to external servers by default.
+Use the security architecture document above as the source of truth for implementation details and threat model assumptions.
 
-> Security details above reflect the current implementation in this repository.
+---
+
+## ☕ Support Development
+
+Built by one developer. Your support helps keep OneRule offline and maintained.
+
+- Buy me a coffee: https://buymeacoffee.com/seralifatih
 
 ---
 
@@ -105,9 +105,9 @@ Privacy-conscious users can build OneRule locally and verify behavior themselves
 
 - **Language:** Dart
 - **UI:** Flutter (Material)
-- **Local Database:** Hive (`HiveAesCipher` encrypted box)
+- **Local Database:** SQLite via **SQLCipher** (`sqflite_sqlcipher`)
 - **State Management:** Provider
-- **Crypto & Secure Storage:** `cryptography`, `flutter_secure_storage`, `local_auth`, Hive `HiveAesCipher`
+- **Crypto & Secure Storage:** `cryptography`, `flutter_secure_storage`, `local_auth`, SQLCipher
 - **Architecture:** Layered Flutter app (UI/screens -> Provider state -> service/facade layer)
 
 ---

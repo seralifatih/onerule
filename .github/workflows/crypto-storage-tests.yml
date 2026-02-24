@@ -1,0 +1,54 @@
+name: Crypto Storage Tests
+
+on:
+  pull_request:
+    paths:
+      - "lib/services/database_service.dart"
+      - "lib/services/field_cipher_service.dart"
+      - "lib/services/backup_service.dart"
+      - "test/crypto_storage_integration_test.dart"
+      - "test/field_cipher_service_test.dart"
+      - "test/database_service_migration_test.dart"
+      - "test/backup_service_test.dart"
+      - "test/test_utils/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/crypto-storage-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "lib/services/database_service.dart"
+      - "lib/services/field_cipher_service.dart"
+      - "lib/services/backup_service.dart"
+      - "test/crypto_storage_integration_test.dart"
+      - "test/field_cipher_service_test.dart"
+      - "test/database_service_migration_test.dart"
+      - "test/backup_service_test.dart"
+      - "test/test_utils/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/crypto-storage-tests.yml"
+
+jobs:
+  crypto-storage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run crypto + storage test bundle
+        run: |
+          flutter test \
+            test/crypto_storage_integration_test.dart \
+            test/field_cipher_service_test.dart \
+            test/database_service_migration_test.dart \
+            test/backup_service_test.dart

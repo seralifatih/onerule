@@ -7,9 +7,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # --- Database ---
+  # --- Legacy migration support (old Hive vault -> SQLCipher) ---
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  # --- Database ---
+  sqflite_sqlcipher: ^3.4.0
   # --- Security ---
   flutter_secure_storage: ^9.0.0
   local_auth: ^2.1.8
@@ -22,7 +24,6 @@ dependencies:
   path_provider: ^2.1.1
   file_picker: ^8.0.0
   share_plus: ^10.0.0
-  sqflite_sqlcipher: ^3.4.0
   # --- UI & Localization ---
   cupertino_icons: ^1.0.6
   flutter_localizations:
@@ -31,10 +32,15 @@ dependencies:
   cryptography: ^2.9.0
   shared_preferences: ^2.5.4
   intl: ^0.20.2
-  url_launcher: ^6.3.0             # ← ADDED: opens Buy Me a Coffee link
+  url_launcher: ^6.3.0
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+  flutter_timezone: ^4.1.1
+  flutter_svg: ^2.0.10+1
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  sqflite_common_ffi: ^2.3.6
   flutter_launcher_icons: ^0.13.1
   flutter_lints: ^3.0.0
   # Code Generation

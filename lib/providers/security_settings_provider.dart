@@ -7,9 +7,13 @@ class SecuritySettingsProvider extends ChangeNotifier {
       'clipboardAutoClearSeconds';
   static const String _applyClipboardPolicyToUsernameKey =
       'applyClipboardPolicyToUsername';
+  static const String _shareCrashReportsKey = 'shareCrashReportsEnabled';
+  static const String _backupReminderEnabledKey = 'backupReminderEnabled';
   static const int defaultAutoLockTimeoutSeconds = 60;
   static const int defaultClipboardAutoClearSeconds = 30;
   static const bool defaultApplyClipboardPolicyToUsername = false;
+  static const bool defaultShareCrashReportsEnabled = false;
+  static const bool defaultBackupReminderEnabled = true;
 
   int _autoLockTimeoutSeconds = defaultAutoLockTimeoutSeconds;
   int get autoLockTimeoutSeconds => _autoLockTimeoutSeconds;
@@ -17,6 +21,10 @@ class SecuritySettingsProvider extends ChangeNotifier {
   int get clipboardAutoClearSeconds => _clipboardAutoClearSeconds;
   bool _applyClipboardPolicyToUsername = defaultApplyClipboardPolicyToUsername;
   bool get applyClipboardPolicyToUsername => _applyClipboardPolicyToUsername;
+  bool _shareCrashReportsEnabled = defaultShareCrashReportsEnabled;
+  bool get shareCrashReportsEnabled => _shareCrashReportsEnabled;
+  bool _backupReminderEnabled = defaultBackupReminderEnabled;
+  bool get backupReminderEnabled => _backupReminderEnabled;
 
   SecuritySettingsProvider() {
     _loadSettings();
@@ -31,6 +39,10 @@ class SecuritySettingsProvider extends ChangeNotifier {
     _applyClipboardPolicyToUsername =
         prefs.getBool(_applyClipboardPolicyToUsernameKey) ??
             defaultApplyClipboardPolicyToUsername;
+    _shareCrashReportsEnabled =
+        prefs.getBool(_shareCrashReportsKey) ?? defaultShareCrashReportsEnabled;
+    _backupReminderEnabled = prefs.getBool(_backupReminderEnabledKey) ??
+        defaultBackupReminderEnabled;
     notifyListeners();
   }
 
@@ -59,5 +71,23 @@ class SecuritySettingsProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_applyClipboardPolicyToUsernameKey, enabled);
+  }
+
+  Future<void> setShareCrashReportsEnabled(bool enabled) async {
+    if (_shareCrashReportsEnabled == enabled) return;
+    _shareCrashReportsEnabled = enabled;
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_shareCrashReportsKey, enabled);
+  }
+
+  Future<void> setBackupReminderEnabled(bool enabled) async {
+    if (_backupReminderEnabled == enabled) return;
+    _backupReminderEnabled = enabled;
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_backupReminderEnabledKey, enabled);
   }
 }

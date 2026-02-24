@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart'; // Compute için gerekli
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:hive/hive.dart';
 
 class SecureStorageService {
   static final SecureStorageService _instance =
@@ -40,6 +39,7 @@ class SecureStorageService {
   static const String _keyLegacyJsonImportDone = 'legacyJsonImportDone';
   static const String _keyLastBackupAt = 'lastBackupAt';
   static const String _keyGcmMigrationDone = 'gcmFieldMigrationDone';
+  static const String _keySqlCipherMigrationDone = 'sqlCipherMigrationDone';
 
   static List<int>? _sessionKey;
 
@@ -82,7 +82,7 @@ class SecureStorageService {
   Future<List<int>> getHiveEncryptionKey() async {
     String? keyString = await _secureStorage.read(key: _keyHiveKey);
     if (keyString == null) {
-      final List<int> key = Hive.generateSecureKey();
+      final List<int> key = _generateSalt(32);
       await _secureStorage.write(key: _keyHiveKey, value: base64UrlEncode(key));
       return key;
     } else {
@@ -223,6 +223,15 @@ class SecureStorageService {
 
   Future<void> setGcmMigrationCompleted() async {
     await _secureStorage.write(key: _keyGcmMigrationDone, value: 'true');
+  }
+
+  Future<bool> hasCompletedSqlCipherMigration() async {
+    final value = await _secureStorage.read(key: _keySqlCipherMigrationDone);
+    return value == 'true';
+  }
+
+  Future<void> setSqlCipherMigrationCompleted() async {
+    await _secureStorage.write(key: _keySqlCipherMigrationDone, value: 'true');
   }
 
   Future<void> setLegacyJsonImportCompleted() async {

@@ -233,6 +233,7 @@ class LockFacade {
         context,
         password,
         successMessageKey: ClipboardService.copiedToClipboardKey,
+        payloadType: ClipboardPayloadType.password,
       ),
     );
   }
@@ -247,6 +248,7 @@ class LockFacade {
         context,
         username,
         successMessageKey: ClipboardService.copiedToClipboardKey,
+        payloadType: ClipboardPayloadType.username,
       ),
     );
   }

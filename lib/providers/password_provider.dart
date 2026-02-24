@@ -1,16 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/password_model.dart';
 import '../services/analytics_service.dart';
+import '../services/credential_provider.dart';
 import '../services/database_service.dart';
 
 class PasswordProvider extends ChangeNotifier {
-  PasswordProvider({DatabaseService? dbService, AnalyticsService? analytics})
-      : _dbService = dbService ?? DatabaseService(),
-        _analytics = analytics ?? AnalyticsService.instance;
+  PasswordProvider({
+    DatabaseService? dbService,
+    AnalyticsService? analytics,
+    CredentialProvider? credentialProvider,
+  })  : _dbService = dbService ?? DatabaseService(),
+        _analytics = analytics ?? AnalyticsService.instance,
+        _credentialProvider =
+            credentialProvider ?? PlatformCredentialProvider();
 
   final DatabaseService _dbService;
   final AnalyticsService _analytics;
+  final CredentialProvider _credentialProvider;
 
   List<PasswordModel> _passwords = [];
   String _selectedCategory = 'All';
@@ -43,6 +52,7 @@ class PasswordProvider extends ChangeNotifier {
   void enterPanicMode() {
     _isPanicMode = true;
     _passwords.clear();
+    unawaited(_credentialProvider.onVaultLocked());
     _notifySafely();
   }
 
@@ -136,6 +146,15 @@ class PasswordProvider extends ChangeNotifier {
 
     _passwords = allPasswords;
     _isLoading = false;
+    unawaited(_credentialProvider.onVaultUnlocked(_passwords));
+    _notifySafely();
+  }
+
+  Future<void> lockForSession() async {
+    _isPanicMode = false;
+    _passwords.clear();
+    _isLoading = false;
+    await _credentialProvider.onVaultLocked();
     _notifySafely();
   }
 

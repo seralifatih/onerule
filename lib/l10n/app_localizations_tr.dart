@@ -81,6 +81,32 @@ class AppLocalizationsTr extends AppLocalizations {
       'Gunluk yigin izleri icerebilir ancak sifreler yer almamalidir.';
 
   @override
+  String get crashReportsSectionTitle => 'Cokme raporlari';
+
+  @override
+  String get shareCrashReportsTitle => 'Cokme raporlarini paylas';
+
+  @override
+  String get shareCrashReportsSubtitle =>
+      'Aciksa yerel loglari elle disa aktarabilirsiniz. Raporlar asla otomatik gonderilmez.';
+
+  @override
+  String get shareCrashReportsDisabled =>
+      'Log disa aktarmadan once Ayarlar\'dan \"Cokme raporlarini paylas\" secenegini acin.';
+
+  @override
+  String get viewLogsTitle => 'Loglari goruntule';
+
+  @override
+  String get viewLogsEmpty => 'Henuz log yok.';
+
+  @override
+  String get copyLogsAction => 'Loglari kopyala';
+
+  @override
+  String get logsCopied => 'Loglar panoya kopyalandi.';
+
+  @override
   String get debugLogEmpty => 'Henuz disa aktarilacak bir hata gunlugu yok.';
 
   @override

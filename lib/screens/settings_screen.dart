@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart'; // ← NEW
+import 'package:url_launcher/url_launcher.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
 import '../providers/password_provider.dart';
 import '../services/analytics_service.dart';
 import '../services/app_facade.dart';
+import '../services/backup_reminder_service.dart';
+import '../services/credential_provider.dart';
 import '../services/local_log_service.dart';
+import '../services/secure_storage_service.dart';
+import 'autofill_setup_screen.dart';
 import 'backup_restore_screen.dart';
+import 'logs_screen.dart';
 import 'login_screen.dart';
+import 'vault_health_screen.dart';
 import '../providers/theme_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/security_settings_provider.dart';
@@ -25,9 +31,12 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthFacade _authFacade = AuthFacade();
   final AnalyticsService _analytics = AnalyticsService.instance;
+  final CredentialProvider _credentialProvider = PlatformCredentialProvider();
 
   bool _biometricEnabled = false;
   bool _hardwareAvailable = false;
+  bool _autofillSupported = false;
+  bool _autofillEnabled = false;
 
   // ─── Buy Me a Coffee URL ─────────────────────────────────────────────────
   static const _buyMeCoffeeUrl = 'https://buymeacoffee.com/seralifatih';
@@ -41,6 +50,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     bool enabled = false;
     bool available = false;
+    bool autofillSupported = false;
+    bool autofillEnabled = false;
 
     try {
       enabled = await _authFacade.isBiometricEnabled();
@@ -50,10 +61,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       available = false;
     }
 
+    try {
+      autofillSupported = await _credentialProvider.isSupported();
+      autofillEnabled =
+          autofillSupported ? await _credentialProvider.isEnabled() : false;
+    } catch (_) {
+      autofillSupported = false;
+      autofillEnabled = false;
+    }
+
     if (mounted) {
       setState(() {
         _biometricEnabled = enabled;
         _hardwareAvailable = available;
+        _autofillSupported = autofillSupported;
+        _autofillEnabled = autofillEnabled;
       });
     }
   }
@@ -348,7 +370,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _logout() {
+  Future<void> _logout() async {
+    final provider = Provider.of<PasswordProvider>(context, listen: false);
+    SecureStorageService().clearSessionKey();
+    await _credentialProvider.onVaultLocked();
+    await provider.lockForSession();
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const LoginScreen()),
       (route) => false,
@@ -775,6 +802,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: _showSetPanicPinDialog,
           ),
 
+          ListTile(
+            leading: Icon(
+              Icons.health_and_safety_outlined,
+              color: colorScheme.secondary,
+            ),
+            title: const Text('Vault Health'),
+            subtitle: const Text(
+              'Weak, duplicate, and stale password checks.',
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const VaultHealthScreen(),
+                ),
+              );
+            },
+          ),
+
           Padding(
             padding: const EdgeInsets.only(
               left: AppSpacing.lg,
@@ -788,6 +835,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+
+          if (_autofillSupported)
+            ListTile(
+              leading: Icon(
+                Icons.touch_app_outlined,
+                color: _autofillEnabled
+                    ? semanticColors.success
+                    : colorScheme.onSurfaceVariant,
+              ),
+              title: const Text('Autofill'),
+              subtitle: Text(
+                _autofillEnabled
+                    ? 'Enabled for OneRule'
+                    : 'Not enabled. Tap to set up.',
+              ),
+              trailing:
+                  const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AutofillSetupScreen(),
+                  ),
+                );
+                _loadSettings();
+              },
+            ),
 
           const Divider(),
 
@@ -820,14 +894,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
+          SwitchListTile(
+            secondary: Icon(
+              Icons.notifications_active_outlined,
+              color: securitySettings.backupReminderEnabled
+                  ? colorScheme.secondary
+                  : colorScheme.onSurfaceVariant,
+            ),
+            title: const Text('Backup reminder'),
+            subtitle: const Text(
+              'Remind me in 7 days to test restore.',
+            ),
+            value: securitySettings.backupReminderEnabled,
+            onChanged: (enabled) async {
+              await securitySettings.setBackupReminderEnabled(enabled);
+              await BackupReminderService.instance.onReminderPreferenceChanged(
+                enabled,
+              );
+            },
+          ),
+
           const Divider(),
+
+          Padding(
+            padding: const EdgeInsets.only(
+              left: AppSpacing.lg,
+              top: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+            ),
+            child: Text(
+              loc.crashReportsSectionTitle,
+              style: textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+
+          SwitchListTile(
+            secondary: Icon(
+              Icons.shield_outlined,
+              color: securitySettings.shareCrashReportsEnabled
+                  ? colorScheme.secondary
+                  : colorScheme.onSurfaceVariant,
+            ),
+            title: Text(loc.shareCrashReportsTitle),
+            subtitle: Text(loc.shareCrashReportsSubtitle),
+            value: securitySettings.shareCrashReportsEnabled,
+            onChanged: (enabled) async {
+              await securitySettings.setShareCrashReportsEnabled(enabled);
+            },
+          ),
+
+          ListTile(
+            leading: Icon(
+              Icons.article_outlined,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            title: Text(loc.viewLogsTitle),
+            trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const LogsScreen(),
+                ),
+              );
+            },
+          ),
 
           ListTile(
             leading:
                 Icon(Icons.bug_report_outlined, color: colorScheme.primary),
             title: Text(loc.exportDebugLogTitle),
             subtitle: Text(loc.exportDebugLogWarning),
-            onTap: () => LocalLogService.instance.exportLog(context),
+            onTap: () => LocalLogService.instance.exportLog(
+              context,
+              shareEnabled: securitySettings.shareCrashReportsEnabled,
+            ),
           ),
 
           const Divider(),
@@ -901,7 +1044,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               bottom: AppSpacing.sm,
             ),
             child: Text(
-              'Support',
+              'Support Development',
               style: textTheme.labelLarge?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -933,7 +1076,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(fontWeight: FontWeight.w500),
             ),
             subtitle: Text(
-              'If OneRule helps you, a coffee keeps it alive.',
+              'Built by one developer. Your support helps keep OneRule offline and maintained.',
               style: textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -953,8 +1096,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               bottom: AppSpacing.sm,
             ),
             child: Text(
-              'OneRule is free, open-source, and has no ads. '
-              'Supporting is entirely optional — thank you.',
+              'Built by one developer. Your support helps keep OneRule offline and maintained.',
               style: textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
@@ -972,7 +1114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
               ),
-              onPressed: _logout,
+              onPressed: () => _logout(),
             ),
           ),
         ],

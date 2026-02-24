@@ -8,6 +8,6 @@ class AutofillFeatureFlag {
       _overrideEnabled ??
       const bool.fromEnvironment(
         'ONERULE_AUTOFILL_MVP',
-        defaultValue: false,
+        defaultValue: true,
       );
 }

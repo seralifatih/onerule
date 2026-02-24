@@ -107,7 +107,7 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
 
-  testWidgets('Home shows updated category after password update', (
+  testWidgets('Home shows updated title after password update', (
     WidgetTester tester,
   ) async {
     final provider = PasswordProvider(
@@ -118,18 +118,18 @@ void main() {
     await tester.pumpWidget(_buildTestApp(provider));
     await tester.pumpAndSettle();
 
-    expect(find.text('GENERAL'), findsOneWidget);
-    expect(find.text('SOCIAL'), findsNothing);
+    expect(find.text('GitHub'), findsOneWidget);
+    expect(find.text('GitHub Work'), findsNothing);
 
     final updated = provider.passwords.first;
-    updated.category = 'Social';
+    updated.title = 'GitHub Work';
     updated.lastModified = DateTime(2026, 1, 2);
     await provider.updatePassword(updated);
 
     await tester.pumpAndSettle();
 
-    expect(find.text('SOCIAL'), findsOneWidget);
-    expect(find.text('GENERAL'), findsNothing);
+    expect(find.text('GitHub Work'), findsOneWidget);
+    expect(find.text('GitHub'), findsNothing);
   });
 
   testWidgets('Delete all from Settings refreshes Home empty state', (

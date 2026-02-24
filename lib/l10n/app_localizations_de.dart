@@ -81,6 +81,32 @@ class AppLocalizationsDe extends AppLocalizations {
       'Das Log kann Stack-Traces enthalten, aber keine Passwoerter.';
 
   @override
+  String get crashReportsSectionTitle => 'Absturzberichte';
+
+  @override
+  String get shareCrashReportsTitle => 'Absturzberichte teilen';
+
+  @override
+  String get shareCrashReportsSubtitle =>
+      'Wenn aktiviert, koennen Sie lokale Logs manuell exportieren. Es wird nichts automatisch gesendet.';
+
+  @override
+  String get shareCrashReportsDisabled =>
+      'Aktivieren Sie in den Einstellungen \"Absturzberichte teilen\", bevor Sie Logs exportieren.';
+
+  @override
+  String get viewLogsTitle => 'Logs anzeigen';
+
+  @override
+  String get viewLogsEmpty => 'Noch keine Logs verfuegbar.';
+
+  @override
+  String get copyLogsAction => 'Logs kopieren';
+
+  @override
+  String get logsCopied => 'Logs in die Zwischenablage kopiert.';
+
+  @override
   String get debugLogEmpty => 'Noch kein Debug-Log verfuegbar.';
 
   @override

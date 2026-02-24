@@ -232,6 +232,54 @@ abstract class AppLocalizations {
   /// **'Log may include stack traces but should not include passwords.'**
   String get exportDebugLogWarning;
 
+  /// No description provided for @crashReportsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Crash reports'**
+  String get crashReportsSectionTitle;
+
+  /// No description provided for @shareCrashReportsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share crash reports'**
+  String get shareCrashReportsTitle;
+
+  /// No description provided for @shareCrashReportsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'If enabled, you can manually export local logs. Reports are never auto-sent.'**
+  String get shareCrashReportsSubtitle;
+
+  /// No description provided for @shareCrashReportsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable \"Share crash reports\" in Settings before exporting logs.'**
+  String get shareCrashReportsDisabled;
+
+  /// No description provided for @viewLogsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View logs'**
+  String get viewLogsTitle;
+
+  /// No description provided for @viewLogsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No logs available yet.'**
+  String get viewLogsEmpty;
+
+  /// No description provided for @copyLogsAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy logs'**
+  String get copyLogsAction;
+
+  /// No description provided for @logsCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs copied to clipboard.'**
+  String get logsCopied;
+
   /// No description provided for @debugLogEmpty.
   ///
   /// In en, this message translates to:

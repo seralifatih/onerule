@@ -17,8 +17,16 @@ class BackupService {
   final SecureStorageService _storage;
 
   static const String _defaultCategory = 'General';
-  static const int _backupSchemaVersion = 2;
+  static const int _backupSchemaVersion = 3;
   static const int _pbkdf2Iterations = 200000;
+  static const String _gcmAlgorithmName = 'AES-GCM-256';
+  static const String _cbcAlgorithmName = 'AES-CBC-256';
+
+  static final _gcm = AesGcm.with256bits();
+  static final _cbc = AesCbc.with256bits(
+    macAlgorithm: MacAlgorithm.empty,
+    paddingAlgorithm: PaddingAlgorithm.pkcs7,
+  );
 
   Future<void> exportPasswords(
     BuildContext context,
@@ -326,15 +334,45 @@ class BackupService {
     required String encryptedPayload,
     required String passphrase,
   }) async {
-    final decrypted = await _decryptPayload(encryptedPayload, passphrase);
-    if (decrypted == null) {
+    try {
+      return decryptEncryptedBackupStrict(
+        encryptedPayload: encryptedPayload,
+        passphrase: passphrase,
+      );
+    } on BackupCipherException {
       return null;
     }
+  }
+
+  Future<List<dynamic>> decryptEncryptedBackupStrict({
+    required String encryptedPayload,
+    required String passphrase,
+  }) async {
+    final decrypted = await _decryptPayloadStrict(encryptedPayload, passphrase);
     final parsed = jsonDecode(decrypted);
     if (parsed is! List<dynamic>) {
-      return null;
+      throw const BackupCipherException(
+        'Backup payload is not a list of records.',
+      );
     }
     return parsed;
+  }
+
+  Future<String?> migrateEncryptedBackupToLatest({
+    required String encryptedPayload,
+    required String passphrase,
+  }) async {
+    try {
+      final parsed = await decryptEncryptedBackupStrict(
+        encryptedPayload: encryptedPayload,
+        passphrase: passphrase,
+      );
+      final records =
+          parsed.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+      return createEncryptedBackup(records: records, passphrase: passphrase);
+    } on BackupCipherException {
+      return null;
+    }
   }
 
   Future<DateTime?> getLastBackupAt() {
@@ -348,13 +386,12 @@ class BackupService {
     final salt = _randomBytes(16);
     final nonce = _randomBytes(12);
     final key = await _deriveKey(passphrase, salt);
-    final aesGcm = AesGcm.with256bits();
 
     final parsedPayload = jsonDecode(plaintext);
     final itemCount = parsedPayload is List ? parsedPayload.length : 0;
     final now = DateTime.now().toUtc();
 
-    final secretBox = await aesGcm.encrypt(
+    final secretBox = await _gcm.encrypt(
       utf8.encode(plaintext),
       secretKey: key,
       nonce: nonce,
@@ -362,10 +399,15 @@ class BackupService {
 
     return {
       'v': _backupSchemaVersion,
+      'envelope': {
+        'format': 'onerule-backup',
+        'version': 'v3',
+        'algorithm': _gcmAlgorithmName,
+        'nonce': base64UrlEncode(secretBox.nonce),
+        'cipherText': base64UrlEncode(secretBox.cipherText),
+        'tag': base64UrlEncode(secretBox.mac.bytes),
+      },
       'salt': base64UrlEncode(salt),
-      'nonce': base64UrlEncode(secretBox.nonce),
-      'cipherText': base64UrlEncode(secretBox.cipherText),
-      'mac': base64UrlEncode(secretBox.mac.bytes),
       'kdf': {
         'algorithm': 'PBKDF2-HMAC-SHA256',
         'iterations': _pbkdf2Iterations,
@@ -383,35 +425,125 @@ class BackupService {
     };
   }
 
-  Future<String?> _decryptPayload(
+  Future<String> _decryptPayloadStrict(
     String encryptedPayload,
     String passphrase,
   ) async {
     final data = jsonDecode(encryptedPayload);
     if (data is! Map<String, dynamic>) {
-      return null;
+      throw const BackupCipherException('Invalid backup container format.');
     }
     final version = data['v'];
-    if (version != 1 && version != _backupSchemaVersion) {
-      return null;
+    if (version == _backupSchemaVersion) {
+      return _decryptV3Gcm(data, passphrase);
+    }
+    if (version == 2) {
+      return _decryptV2Gcm(data, passphrase);
+    }
+    if (version == 1) {
+      return _decryptV1Legacy(data, passphrase);
+    }
+    throw BackupCipherException('Unsupported backup version: $version');
+  }
+
+  Future<String> _decryptV3Gcm(
+    Map<String, dynamic> data,
+    String passphrase,
+  ) async {
+    final envelope = data['envelope'];
+    if (envelope is! Map<String, dynamic>) {
+      throw const BackupCipherException('Missing backup envelope.');
+    }
+    if ((envelope['algorithm'] as String?) != _gcmAlgorithmName) {
+      throw const BackupCipherException('Unsupported v3 backup algorithm.');
     }
 
     try {
-      final salt = base64Url.decode(data['salt'] as String);
-      final nonce = base64Url.decode(data['nonce'] as String);
-      final cipherText = base64Url.decode(data['cipherText'] as String);
-      final macBytes = base64Url.decode(data['mac'] as String);
+      final salt = _decodeBase64Url(data['salt'] as String, field: 'salt');
+      final nonce =
+          _decodeBase64Url(envelope['nonce'] as String, field: 'nonce');
+      final cipherText = _decodeBase64Url(envelope['cipherText'] as String,
+          field: 'cipherText');
+      final macBytes =
+          _decodeBase64Url(envelope['tag'] as String, field: 'tag');
       final key = await _deriveKey(passphrase, salt);
-      final aesGcm = AesGcm.with256bits();
 
-      final clearText = await aesGcm.decrypt(
+      final clearText = await _gcm.decrypt(
         SecretBox(cipherText, nonce: nonce, mac: Mac(macBytes)),
         secretKey: key,
       );
 
       return utf8.decode(clearText);
-    } catch (_) {
-      return null;
+    } on SecretBoxAuthenticationError {
+      throw const BackupCipherException(
+        'Backup authentication failed. File may be tampered or passphrase is wrong.',
+      );
+    } catch (e) {
+      throw BackupCipherException('Failed to decrypt v3 backup: $e');
+    }
+  }
+
+  Future<String> _decryptV2Gcm(
+    Map<String, dynamic> data,
+    String passphrase,
+  ) async {
+    try {
+      final salt = _decodeBase64Url(data['salt'] as String, field: 'salt');
+      final nonce = _decodeBase64Url(data['nonce'] as String, field: 'nonce');
+      final cipherText =
+          _decodeBase64Url(data['cipherText'] as String, field: 'cipherText');
+      final macBytes = _decodeBase64Url(data['mac'] as String, field: 'mac');
+      final key = await _deriveKey(passphrase, salt);
+
+      final clearText = await _gcm.decrypt(
+        SecretBox(cipherText, nonce: nonce, mac: Mac(macBytes)),
+        secretKey: key,
+      );
+
+      return utf8.decode(clearText);
+    } on SecretBoxAuthenticationError {
+      throw const BackupCipherException(
+        'Backup authentication failed. File may be tampered or passphrase is wrong.',
+      );
+    } catch (e) {
+      throw BackupCipherException('Failed to decrypt v2 backup: $e');
+    }
+  }
+
+  Future<String> _decryptV1Legacy(
+    Map<String, dynamic> data,
+    String passphrase,
+  ) async {
+    final cipher = data['cipher'];
+    final algorithm =
+        cipher is Map<String, dynamic> ? cipher['algorithm'] as String? : null;
+
+    if (algorithm == _cbcAlgorithmName || data.containsKey('iv')) {
+      return _decryptV1Cbc(data, passphrase);
+    }
+    return _decryptV2Gcm(data, passphrase);
+  }
+
+  Future<String> _decryptV1Cbc(
+    Map<String, dynamic> data,
+    String passphrase,
+  ) async {
+    try {
+      final salt = _decodeBase64Url(data['salt'] as String, field: 'salt');
+      final iv = _decodeBase64Url(data['iv'] as String, field: 'iv');
+      final cipherText =
+          _decodeBase64Url(data['cipherText'] as String, field: 'cipherText');
+      final key = await _deriveKey(passphrase, salt);
+
+      final clearText = await _cbc.decrypt(
+        SecretBox(cipherText, nonce: iv, mac: Mac.empty),
+        secretKey: key,
+      );
+      return utf8.decode(clearText);
+    } catch (e) {
+      throw const BackupCipherException(
+        'Failed to decrypt legacy CBC backup. Passphrase may be wrong or payload is corrupted.',
+      );
     }
   }
 
@@ -432,8 +564,60 @@ class BackupService {
     return List<int>.generate(length, (_) => rnd.nextInt(256));
   }
 
+  List<int> _decodeBase64Url(String value, {required String field}) {
+    final remainder = value.length % 4;
+    final padded = remainder == 0 ? value : '$value${'=' * (4 - remainder)}';
+    try {
+      return base64Url.decode(padded);
+    } catch (e) {
+      throw BackupCipherException('Invalid base64url $field in backup: $e');
+    }
+  }
+
+  @visibleForTesting
+  Future<String> createLegacyCbcBackupForTesting({
+    required List<Map<String, dynamic>> records,
+    required String passphrase,
+  }) async {
+    final plaintext = jsonEncode(records);
+    final salt = _randomBytes(16);
+    final iv = _randomBytes(_cbc.nonceLength);
+    final key = await _deriveKey(passphrase, salt);
+    final secretBox = await _cbc.encrypt(
+      utf8.encode(plaintext),
+      secretKey: key,
+      nonce: iv,
+    );
+
+    return jsonEncode({
+      'v': 1,
+      'salt': base64UrlEncode(salt),
+      'iv': base64UrlEncode(secretBox.nonce),
+      'cipherText': base64UrlEncode(secretBox.cipherText),
+      'kdf': {
+        'algorithm': 'PBKDF2-HMAC-SHA256',
+        'iterations': _pbkdf2Iterations,
+        'saltLength': 16,
+        'keyBits': 256,
+      },
+      'cipher': {
+        'algorithm': _cbcAlgorithmName,
+        'ivLength': _cbc.nonceLength,
+      },
+    });
+  }
+
   void _showSnack(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+class BackupCipherException implements Exception {
+  const BackupCipherException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'BackupCipherException: $message';
 }

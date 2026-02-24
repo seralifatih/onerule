@@ -325,7 +325,6 @@ class _AddPasswordSheetState extends State<AddPasswordSheet> {
               tooltip: loc.usernameEmailLabel,
               icon: const Icon(Icons.copy_rounded),
               onPressed: () {
-                // TODO: Align username clipboard auto-clear policy with password copy settings.
                 _lockFacade.copyUsernameToClipboard(
                   context: context,
                   username: _usernameController.text,

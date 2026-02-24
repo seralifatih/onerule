@@ -1,0 +1,27 @@
+name: Security Copy Guard
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "scripts/check-security-terminology.sh"
+      - ".github/workflows/security-copy-guard.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "scripts/check-security-terminology.sh"
+      - ".github/workflows/security-copy-guard.yml"
+
+jobs:
+  terminology-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run security terminology check
+        run: bash scripts/check-security-terminology.sh

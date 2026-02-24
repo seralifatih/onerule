@@ -81,6 +81,32 @@ class AppLocalizationsEn extends AppLocalizations {
       'Log may include stack traces but should not include passwords.';
 
   @override
+  String get crashReportsSectionTitle => 'Crash reports';
+
+  @override
+  String get shareCrashReportsTitle => 'Share crash reports';
+
+  @override
+  String get shareCrashReportsSubtitle =>
+      'If enabled, you can manually export local logs. Reports are never auto-sent.';
+
+  @override
+  String get shareCrashReportsDisabled =>
+      'Enable \"Share crash reports\" in Settings before exporting logs.';
+
+  @override
+  String get viewLogsTitle => 'View logs';
+
+  @override
+  String get viewLogsEmpty => 'No logs available yet.';
+
+  @override
+  String get copyLogsAction => 'Copy logs';
+
+  @override
+  String get logsCopied => 'Logs copied to clipboard.';
+
+  @override
   String get debugLogEmpty => 'No debug log available yet.';
 
   @override

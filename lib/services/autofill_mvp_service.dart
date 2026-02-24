@@ -11,7 +11,11 @@ enum AutofillMvpAvailability {
 abstract class AutofillMvpBridge {
   Future<bool> isPlatformSupported();
   Future<bool> isNativeScaffoldEnabled();
+  Future<bool> isAutofillEnabled();
   Future<void> openSystemAutofillSettings();
+  Future<void> syncCredentialSnapshot(String payload);
+  Future<void> setSessionKey(String sessionKeyBase64);
+  Future<void> clearSessionKey();
 }
 
 class MethodChannelAutofillMvpBridge implements AutofillMvpBridge {
@@ -31,8 +35,35 @@ class MethodChannelAutofillMvpBridge implements AutofillMvpBridge {
   }
 
   @override
+  Future<bool> isAutofillEnabled() async {
+    final result = await _channel.invokeMethod<bool>('isAutofillEnabled');
+    return result ?? false;
+  }
+
+  @override
   Future<void> openSystemAutofillSettings() async {
     await _channel.invokeMethod<void>('openAutofillSettings');
+  }
+
+  @override
+  Future<void> syncCredentialSnapshot(String payload) async {
+    await _channel.invokeMethod<void>(
+      'syncAutofillCredentialSnapshot',
+      <String, Object?>{'payload': payload},
+    );
+  }
+
+  @override
+  Future<void> setSessionKey(String sessionKeyBase64) async {
+    await _channel.invokeMethod<void>(
+      'setAutofillSessionKey',
+      <String, Object?>{'sessionKeyBase64': sessionKeyBase64},
+    );
+  }
+
+  @override
+  Future<void> clearSessionKey() async {
+    await _channel.invokeMethod<void>('clearAutofillSessionKey');
   }
 }
 
@@ -66,5 +97,33 @@ class AutofillMvpService {
     }
     await _bridge.openSystemAutofillSettings();
     return true;
+  }
+
+  Future<bool> isEnabledInSystem() async {
+    final state = await availability();
+    if (state != AutofillMvpAvailability.available) {
+      return false;
+    }
+    return _bridge.isAutofillEnabled();
+  }
+
+  Future<void> syncCredentialSnapshot({
+    required String payload,
+    required String sessionKeyBase64,
+  }) async {
+    final state = await availability();
+    if (state != AutofillMvpAvailability.available) {
+      return;
+    }
+    await _bridge.setSessionKey(sessionKeyBase64);
+    await _bridge.syncCredentialSnapshot(payload);
+  }
+
+  Future<void> clearSessionKey() async {
+    final state = await availability();
+    if (state != AutofillMvpAvailability.available) {
+      return;
+    }
+    await _bridge.clearSessionKey();
   }
 }

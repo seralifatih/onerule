@@ -1,12 +1,16 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:offline_pass_manager/l10n/app_localizations.dart';
-import '../main.dart';
 import 'package:provider/provider.dart';
+
+import '../main.dart';
 import '../providers/password_provider.dart';
 import '../services/analytics_service.dart';
 import '../services/app_facade.dart';
+import '../services/backup_reminder_service.dart';
 import '../theme/app_elevation.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
@@ -23,6 +27,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
+  static const int _pinLength = 6;
+  static const int _minPinLength = 4;
+
   final TextEditingController _pinController = TextEditingController();
   final FocusNode _pinFocusNode = FocusNode();
   late final AuthFacade _authFacade;
@@ -38,16 +45,14 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isAuthenticating = false;
   bool _usePinRequested = false;
   bool _isBiometricEnabled = false;
+
+  int _onboardingStep = 0; // 0: welcome, 1: security, 2: pin setup, 3: panic
+  bool _pinAcknowledged = false;
+  bool _showPanicPinSetup = false;
+  final TextEditingController _panicPinController = TextEditingController();
+
   String _errorMessage = '';
   String _pinInfoMessage = '';
-
-  // ── First-time setup: acknowledgment step ──────────────────────────────
-  // After the user enters their PIN the first time, we show a confirmation
-  // step before actually saving. _pendingFirstTimePin holds the entered PIN
-  // while the user reads and checks the acknowledgment.
-  String? _pendingFirstTimePin;
-  bool _showAcknowledgment = false;
-  bool _pinAcknowledged = false;
 
   @override
   void initState() {
@@ -63,11 +68,12 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     _pinController.addListener(() {
-      if (_pinController.text.length == 6 && !_isFirstTime) {
-        // Auto-submit only on return visits — first-time needs the button
+      if (_pinController.text.length == _pinLength && !_isFirstTime) {
         _submit();
       }
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     });
 
     _checkStatus();
@@ -76,12 +82,11 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     _pinController.dispose();
+    _panicPinController.dispose();
     _pinFocusNode.dispose();
     _shakeController.dispose();
     super.dispose();
   }
-
-  // ── Auth flow ───────────────────────────────────────────────────────────
 
   Future<void> _checkStatus() async {
     final hasPin = await _authFacade.hasMasterPin();
@@ -113,7 +118,19 @@ class _LoginScreenState extends State<LoginScreen>
       _isAuthenticating = false;
       _usePinRequested = false;
       _pinInfoMessage = '';
+
+      if (_isFirstTime) {
+        _onboardingStep = 0;
+        _pinAcknowledged = false;
+        _showPanicPinSetup = false;
+        _errorMessage = '';
+      }
     });
+
+    if (_isFirstTime) {
+      _pinController.clear();
+      return;
+    }
 
     if (hasPin && bioEnabled && bioAvailable) {
       await _tryBiometricLogin(skipAvailabilityCheck: true);
@@ -153,7 +170,9 @@ class _LoginScreenState extends State<LoginScreen>
       localizedReason: localizedReason,
     );
 
-    if (kDebugMode) debugPrint('[Login] biometricResult=${outcome.name}');
+    if (kDebugMode) {
+      debugPrint('[Login] biometricResult=${outcome.name}');
+    }
     if (!mounted) return;
 
     if (outcome == BiometricUnlockOutcome.success) {
@@ -198,68 +217,107 @@ class _LoginScreenState extends State<LoginScreen>
     _pinFocusNode.requestFocus();
   }
 
-  // ── First-time PIN flow ─────────────────────────────────────────────────
-  // Step 1: user enters PIN and taps "Set PIN"
-  // Step 2: acknowledgment screen shown — checkbox must be ticked
-  // Step 3: user taps "Confirm & Open Vault" → actual loginWithPin() call
-
-  void _onSetPinTapped() {
-    final input = _pinController.text;
-    if (input.length < 4) {
-      setState(() => _errorMessage = 'PIN must be at least 4 digits');
-      return;
-    }
-
-    _analytics.primaryCtaTap(ctaId: 'login_set_pin', screen: 'login');
-
-    // Stash the PIN, switch to acknowledgment view
+  void _goToOnboardingStep(int step) {
     setState(() {
-      _pendingFirstTimePin = input;
-      _showAcknowledgment = true;
-      _pinAcknowledged = false;
+      _onboardingStep = step.clamp(0, 3);
       _errorMessage = '';
     });
 
-    // Dismiss keyboard — user needs to read, not type
-    _pinFocusNode.unfocus();
+    if (_onboardingStep == 2) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _pinFocusNode.requestFocus();
+        }
+      });
+    }
   }
 
-  Future<void> _confirmAndCreateVault() async {
-    if (!_pinAcknowledged || _pendingFirstTimePin == null) return;
+  Future<void> _submitFirstTimePin() async {
+    final input = _pinController.text;
+    if (input.length < _minPinLength) {
+      setState(() {
+        _errorMessage = 'PIN must be at least 4 digits';
+      });
+      return;
+    }
+    if (!_pinAcknowledged || _isAuthenticating) {
+      return;
+    }
 
     final provider = context.read<PasswordProvider>();
     final biometricEnabled = await _authFacade.isBiometricEnabled();
+    await _analytics.primaryCtaTap(
+        ctaId: 'onboarding_continue', screen: 'onboarding');
     await _analytics.unlockAttempt(
         method: 'pin', biometricEnabled: biometricEnabled);
     if (!mounted) return;
 
+    setState(() {
+      _isAuthenticating = true;
+      _errorMessage = '';
+    });
+
     try {
       await _authFacade.loginWithPin(
         context: context,
-        pin: _pendingFirstTimePin!,
+        pin: input,
         isFirstTime: true,
         provider: provider,
       );
+      unawaited(
+        BackupReminderService.instance
+            .recordVaultCreationAndSchedule()
+            .catchError((_) {}),
+      );
       _pinController.clear();
-      _pendingFirstTimePin = null;
-      _goToHome();
+      setState(() {
+        _isAuthenticating = false;
+        _showPanicPinSetup = false;
+      });
+      _goToOnboardingStep(3);
     } on AuthException catch (e) {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
       setState(() {
         _errorMessage = e.message;
-        _showAcknowledgment = false;
-        _pendingFirstTimePin = null;
-        _pinController.clear();
+        _isAuthenticating = false;
       });
     }
   }
 
-  // ── Return-visit PIN submit ─────────────────────────────────────────────
+  Future<void> _setPanicPinNow() async {
+    final panicPin = _panicPinController.text;
+    if (panicPin.length < _minPinLength || _isAuthenticating) {
+      setState(() {
+        _errorMessage = 'PIN must be at least 4 digits';
+      });
+      return;
+    }
+
+    setState(() {
+      _isAuthenticating = true;
+      _errorMessage = '';
+    });
+
+    try {
+      await _authFacade.setPanicPin(
+        context: context,
+        panicPin: panicPin,
+      );
+      _panicPinController.clear();
+      _goToHome();
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isAuthenticating = false;
+        _errorMessage = e.message;
+      });
+    }
+  }
 
   Future<void> _submit() async {
     final input = _pinController.text;
-    if (input.length < 4) return;
+    if (input.length < _minPinLength) return;
 
     final provider = context.read<PasswordProvider>();
     final biometricEnabled = await _authFacade.isBiometricEnabled();
@@ -293,8 +351,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -308,7 +364,7 @@ class _LoginScreenState extends State<LoginScreen>
         end: Alignment.bottomRight,
         colors: [
           semanticColors.authGradientStart,
-          semanticColors.authGradientEnd,
+          semanticColors.authGradientEnd
         ],
       ),
     );
@@ -324,13 +380,14 @@ class _LoginScreenState extends State<LoginScreen>
       );
     }
 
+    final shouldFocusPin = (!_isFirstTime && _showPinEntry) ||
+        (_isFirstTime && _onboardingStep == 2);
+
     return Scaffold(
       body: Container(
         decoration: gradient,
         child: GestureDetector(
-          onTap: (_showPinEntry && !_showAcknowledgment)
-              ? () => _pinFocusNode.requestFocus()
-              : null,
+          onTap: shouldFocusPin ? () => _pinFocusNode.requestFocus() : null,
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -338,8 +395,8 @@ class _LoginScreenState extends State<LoginScreen>
                   horizontal: AppSpacing.xl + AppSpacing.md,
                   vertical: AppSpacing.xl,
                 ),
-                child: _showAcknowledgment
-                    ? _buildAcknowledgmentView(colorScheme, theme.textTheme)
+                child: _isFirstTime
+                    ? _buildOnboardingView(colorScheme, theme.textTheme)
                     : _buildMainView(colorScheme, theme.textTheme),
               ),
             ),
@@ -349,7 +406,425 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Main PIN entry view ─────────────────────────────────────────────────
+  Widget _buildOnboardingView(ColorScheme colorScheme, TextTheme textTheme) {
+    switch (_onboardingStep) {
+      case 0:
+        return _buildWelcomeStep(colorScheme, textTheme);
+      case 1:
+        return _buildSecurityStep(colorScheme, textTheme);
+      case 2:
+        return _buildPinSetupStep(colorScheme, textTheme);
+      case 3:
+        return _buildPanicModeStep(colorScheme, textTheme);
+      default:
+        return _buildWelcomeStep(colorScheme, textTheme);
+    }
+  }
+
+  Widget _buildWelcomeStep(ColorScheme colorScheme, TextTheme textTheme) {
+    return Column(
+      children: [
+        _buildAppIcon(colorScheme),
+        const SizedBox(height: AppSpacing.giant),
+        Text(
+          'Welcome to OneRule',
+          textAlign: TextAlign.center,
+          style: textTheme.headlineMedium?.copyWith(
+            color: colorScheme.onPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Your offline vault with panic mode protection.',
+          textAlign: TextAlign.center,
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onPrimary.withValues(alpha: 0.75),
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _buildInfoCard(
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          icon: Icons.lock_person_rounded,
+          title: 'Offline vault',
+          body:
+              'Your vault stays on this device. OneRule does not require an account.',
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _buildInfoCard(
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          icon: Icons.warning_amber_rounded,
+          title: 'Panic mode',
+          body:
+              'A separate panic PIN can open a decoy flow when you need plausible deniability.',
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        SizedBox(
+          width: double.infinity,
+          height: AppSpacing.giant + AppSpacing.lg - 1,
+          child: FilledButton(
+            onPressed: () => _goToOnboardingStep(1),
+            style: FilledButton.styleFrom(
+              elevation: AppElevation.high,
+              shadowColor: colorScheme.primary.withValues(alpha: 0.4),
+            ),
+            child: Text(
+              'Continue',
+              style: textTheme.labelLarge?.copyWith(letterSpacing: 0.3),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecurityStep(ColorScheme colorScheme, TextTheme textTheme) {
+    return Column(
+      children: [
+        Icon(
+          Icons.shield_outlined,
+          size: 64,
+          color: colorScheme.onPrimary,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'Security basics',
+          textAlign: TextAlign.center,
+          style: textTheme.headlineSmall?.copyWith(
+            color: colorScheme.onPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'No cloud. No accounts. Your encryption keys stay local.',
+          textAlign: TextAlign.center,
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onPrimary.withValues(alpha: 0.75),
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _buildInfoCard(
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          icon: Icons.cloud_off_rounded,
+          title: 'No cloud sync',
+          body:
+              'OneRule does not upload your vault by default. Data at rest is local-only.',
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _buildInfoCard(
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          icon: Icons.account_circle_outlined,
+          title: 'No account system',
+          body:
+              'There is no account login or password reset service in the app flow.',
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _buildInfoCard(
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          icon: Icons.enhanced_encryption_rounded,
+          title: 'Encrypted vault',
+          body:
+              'Your PIN derives the key that unlocks the local SQLCipher vault and field encryption.',
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => _goToOnboardingStep(0),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: colorScheme.onPrimary.withValues(alpha: 0.45),
+                  ),
+                  foregroundColor: colorScheme.onPrimary,
+                ),
+                child: const Text('Back'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: FilledButton(
+                onPressed: () => _goToOnboardingStep(2),
+                child: const Text('Continue'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPinSetupStep(ColorScheme colorScheme, TextTheme textTheme) {
+    return Column(
+      children: [
+        Icon(
+          Icons.key_rounded,
+          size: 64,
+          color: colorScheme.onPrimary,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'Set your Master PIN',
+          textAlign: TextAlign.center,
+          style: textTheme.headlineSmall?.copyWith(
+            color: colorScheme.onPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Use at least 4 digits. 6 digits is recommended.',
+          textAlign: TextAlign.center,
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onPrimary.withValues(alpha: 0.75),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _buildPinBoxes(colorScheme),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          child: _errorMessage.isNotEmpty
+              ? Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.md),
+                  child: Text(
+                    _errorMessage,
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFFFF6B6B),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              : const SizedBox(height: 0),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(AppRadius.medium),
+            border: Border.all(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'If you forget this PIN, your data cannot be recovered by anyone, including the developer. Write it down.',
+            style: textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFFFFE6BF),
+              fontWeight: FontWeight.w700,
+              height: 1.45,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        CheckboxListTile(
+          value: _pinAcknowledged,
+          onChanged: (value) {
+            setState(() {
+              _pinAcknowledged = value ?? false;
+            });
+          },
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+          activeColor: colorScheme.onPrimary,
+          checkColor: colorScheme.primary,
+          title: Text(
+            'I understand',
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed:
+                    _isAuthenticating ? null : () => _goToOnboardingStep(1),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: colorScheme.onPrimary.withValues(alpha: 0.45),
+                  ),
+                  foregroundColor: colorScheme.onPrimary,
+                ),
+                child: const Text('Back'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: FilledButton(
+                onPressed: _pinController.text.length >= _minPinLength &&
+                        _pinAcknowledged &&
+                        !_isAuthenticating
+                    ? _submitFirstTimePin
+                    : null,
+                child: _isAuthenticating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Continue'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPanicModeStep(ColorScheme colorScheme, TextTheme textTheme) {
+    return Column(
+      children: [
+        Icon(
+          Icons.visibility_off_rounded,
+          size: 64,
+          color: colorScheme.onPrimary,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'Panic Mode',
+          textAlign: TextAlign.center,
+          style: textTheme.headlineSmall?.copyWith(
+            color: colorScheme.onPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Set an optional decoy PIN. If someone forces a login, you can open a harmless decoy flow.',
+          textAlign: TextAlign.center,
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onPrimary.withValues(alpha: 0.78),
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _buildInfoCard(
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          icon: Icons.tips_and_updates_outlined,
+          title: 'How it works',
+          body:
+              'Use a different PIN than your real one. Real PIN opens your vault; decoy PIN opens panic mode.',
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'You can set or change this later in Settings > Panic PIN.',
+          textAlign: TextAlign.center,
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onPrimary.withValues(alpha: 0.72),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        if (_showPanicPinSetup) ...[
+          TextField(
+            controller: _panicPinController,
+            keyboardType: TextInputType.number,
+            maxLength: _pinLength,
+            obscureText: true,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: 'Enter decoy PIN',
+              filled: true,
+              fillColor: colorScheme.onPrimary.withValues(alpha: 0.12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.medium),
+                borderSide: BorderSide(
+                  color: colorScheme.onPrimary.withValues(alpha: 0.25),
+                ),
+              ),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_errorMessage.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Text(
+                _errorMessage,
+                textAlign: TextAlign.center,
+                style: textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFFFF6B6B),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _panicPinController.text.length >= _minPinLength &&
+                      !_isAuthenticating
+                  ? _setPanicPinNow
+                  : null,
+              child: _isAuthenticating
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save and Continue'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextButton(
+            onPressed: _isAuthenticating
+                ? null
+                : () {
+                    setState(() {
+                      _showPanicPinSetup = false;
+                      _panicPinController.clear();
+                      _errorMessage = '';
+                    });
+                  },
+            child: const Text('Back'),
+          ),
+        ] else ...[
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: () {
+                    setState(() {
+                      _showPanicPinSetup = true;
+                      _errorMessage = '';
+                    });
+                  },
+                  child: const Text('Set up now'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _goToHome,
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: colorScheme.onPrimary.withValues(alpha: 0.45),
+                    ),
+                    foregroundColor: colorScheme.onPrimary,
+                  ),
+                  child: const Text('Skip'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
 
   Widget _buildMainView(ColorScheme colorScheme, TextTheme textTheme) {
     final loc = AppLocalizations.of(context)!;
@@ -360,7 +835,7 @@ class _LoginScreenState extends State<LoginScreen>
         _buildAppIcon(colorScheme),
         const SizedBox(height: AppSpacing.giant),
         Text(
-          _isFirstTime ? loc.createMasterPinTitle : loc.appTitle,
+          loc.appTitle,
           style: textTheme.headlineMedium?.copyWith(
             color: colorScheme.onPrimary,
             fontWeight: FontWeight.bold,
@@ -369,7 +844,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          _isFirstTime ? loc.createMasterPinSubtitle : loc.enterPinToDecrypt,
+          loc.enterPinToDecrypt,
           textAlign: TextAlign.center,
           style: textTheme.bodyMedium?.copyWith(
             color: colorScheme.onPrimary.withValues(alpha: 0.65),
@@ -388,9 +863,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             const SizedBox(height: AppSpacing.md),
           ],
-
           _buildPinBoxes(colorScheme),
-
           AnimatedSize(
             duration: const Duration(milliseconds: 200),
             child: _errorMessage.isNotEmpty
@@ -407,213 +880,18 @@ class _LoginScreenState extends State<LoginScreen>
                   )
                 : const SizedBox(height: 0),
           ),
-
-          const SizedBox(height: AppSpacing.xl + AppSpacing.md),
-
-          // First-time: show "Set PIN" button always so user knows to tap
-          // Return visits: button hidden — auto-submit on 6 digits
-          if (_isFirstTime)
-            SizedBox(
-              width: double.infinity,
-              height: AppSpacing.giant + AppSpacing.lg - 1,
-              child: FilledButton(
-                onPressed:
-                    _pinController.text.length >= 4 ? _onSetPinTapped : null,
-                style: FilledButton.styleFrom(
-                  elevation: AppElevation.high,
-                  shadowColor: colorScheme.primary.withValues(alpha: 0.4),
-                  disabledBackgroundColor:
-                      colorScheme.onPrimary.withValues(alpha: 0.15),
-                ),
-                child: Text(
-                  loc.setMasterPinAction,
-                  style: textTheme.labelLarge?.copyWith(letterSpacing: 1),
-                ),
-              ),
-            ),
         ] else if (_biometricInProgress) ...[
           _buildBiometricWaiting(loc, colorScheme, textTheme),
         ],
-        if (!_isFirstTime && _showPinEntry && _isBiometricEnabled)
+        if (_showPinEntry && _isBiometricEnabled) ...[
           _buildBiometricShortcut(loc, colorScheme, textTheme),
+        ],
         const SizedBox(height: AppSpacing.xl),
       ],
     );
   }
 
-  // ── Acknowledgment view ─────────────────────────────────────────────────
-
-  Widget _buildAcknowledgmentView(
-      ColorScheme colorScheme, TextTheme textTheme) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Warning icon
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-            border: Border.all(
-              color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
-              width: 1.5,
-            ),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.key_rounded,
-              size: 36,
-              color: Color(0xFFF59E0B),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: AppSpacing.xl),
-
-        Text(
-          'Remember your PIN',
-          textAlign: TextAlign.center,
-          style: textTheme.headlineSmall?.copyWith(
-            color: colorScheme.onPrimary,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.3,
-          ),
-        ),
-
-        const SizedBox(height: AppSpacing.md),
-
-        // Warning cards
-        _buildWarningCard(
-          colorScheme: colorScheme,
-          textTheme: textTheme,
-          icon: Icons.lock_rounded,
-          title: 'Your PIN encrypts everything',
-          body:
-              'It is used to encrypt your vault. Without it, your data cannot be decrypted by anyone — including the developer.',
-        ),
-
-        const SizedBox(height: AppSpacing.sm),
-
-        _buildWarningCard(
-          colorScheme: colorScheme,
-          textTheme: textTheme,
-          icon: Icons.cloud_off_rounded,
-          title: 'No recovery option exists',
-          body:
-              'OneRule is 100% offline. There is no account, no cloud backup, and no password reset. If you forget your PIN, your vault is permanently inaccessible.',
-        ),
-
-        const SizedBox(height: AppSpacing.sm),
-
-        _buildWarningCard(
-          colorScheme: colorScheme,
-          textTheme: textTheme,
-          icon: Icons.note_alt_outlined,
-          title: 'Write it down somewhere safe',
-          body:
-              'Store your PIN in a secure physical location — a notebook, a safe, or a trusted place only you can access.',
-        ),
-
-        const SizedBox(height: AppSpacing.xl),
-
-        // Checkbox acknowledgment
-        InkWell(
-          onTap: () => setState(() => _pinAcknowledged = !_pinAcknowledged),
-          borderRadius: BorderRadius.circular(AppRadius.medium),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: AppSpacing.sm,
-              horizontal: AppSpacing.xs,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(6),
-                    color: _pinAcknowledged
-                        ? colorScheme.onPrimary
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: _pinAcknowledged
-                          ? colorScheme.onPrimary
-                          : colorScheme.onPrimary.withValues(alpha: 0.4),
-                      width: 2,
-                    ),
-                  ),
-                  child: _pinAcknowledged
-                      ? Icon(
-                          Icons.check_rounded,
-                          size: 16,
-                          color: colorScheme.primary,
-                        )
-                      : null,
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text(
-                    'I understand that if I forget my PIN, my vault cannot be recovered.',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onPrimary.withValues(alpha: 0.85),
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: AppSpacing.xl),
-
-        // Confirm button — disabled until checkbox ticked
-        SizedBox(
-          width: double.infinity,
-          height: AppSpacing.giant + AppSpacing.lg - 1,
-          child: FilledButton(
-            onPressed: _pinAcknowledged ? _confirmAndCreateVault : null,
-            style: FilledButton.styleFrom(
-              elevation: AppElevation.high,
-              shadowColor: colorScheme.primary.withValues(alpha: 0.4),
-              disabledBackgroundColor:
-                  colorScheme.onPrimary.withValues(alpha: 0.12),
-            ),
-            child: Text(
-              'Confirm & Open Vault',
-              style: textTheme.labelLarge?.copyWith(letterSpacing: 0.5),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: AppSpacing.md),
-
-        // Go back — let user change their PIN
-        TextButton(
-          onPressed: () {
-            setState(() {
-              _showAcknowledgment = false;
-              _pendingFirstTimePin = null;
-              _pinAcknowledged = false;
-              _pinController.clear();
-            });
-            _pinFocusNode.requestFocus();
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: colorScheme.onPrimary.withValues(alpha: 0.6),
-          ),
-          child: const Text('← Change PIN'),
-        ),
-
-        const SizedBox(height: AppSpacing.xl),
-      ],
-    );
-  }
-
-  Widget _buildWarningCard({
+  Widget _buildInfoCard({
     required ColorScheme colorScheme,
     required TextTheme textTheme,
     required IconData icon,
@@ -637,7 +915,7 @@ class _LoginScreenState extends State<LoginScreen>
           Icon(
             icon,
             size: 18,
-            color: colorScheme.onPrimary.withValues(alpha: 0.6),
+            color: colorScheme.onPrimary.withValues(alpha: 0.7),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -648,14 +926,14 @@ class _LoginScreenState extends State<LoginScreen>
                   title,
                   style: textTheme.labelMedium?.copyWith(
                     color: colorScheme.onPrimary,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   body,
                   style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onPrimary.withValues(alpha: 0.65),
+                    color: colorScheme.onPrimary.withValues(alpha: 0.75),
                     height: 1.5,
                   ),
                 ),
@@ -667,31 +945,41 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Shared sub-widgets ───────────────────────────────────────────────────
-
   Widget _buildAppIcon(ColorScheme colorScheme) {
+    final colors = context.appColors;
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg + AppSpacing.xs),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: colorScheme.surface,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.surface.withValues(alpha: 0.98),
+            colorScheme.surface.withValues(alpha: 0.88),
+          ],
+        ),
+        border: Border.all(
+          color: colors.accentCyan.withValues(alpha: 0.45),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.primary.withValues(alpha: 0.35),
-            blurRadius: AppSpacing.xl,
-            spreadRadius: AppSpacing.xs,
+            color: colors.accentCyan.withValues(alpha: 0.35),
+            blurRadius: AppSpacing.xl + AppSpacing.sm,
+            spreadRadius: AppSpacing.xs + 1,
           ),
         ],
       ),
       child: ClipOval(
         child: Image.asset(
           'assets/icon/app_icon.png',
-          width: AppSpacing.giant + AppSpacing.giant / 2,
-          height: AppSpacing.giant + AppSpacing.giant / 2,
+          width: AppSpacing.giant + AppSpacing.giant / 2 + AppSpacing.xs,
+          height: AppSpacing.giant + AppSpacing.giant / 2 + AppSpacing.xs,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Icon(
             Icons.lock_person_rounded,
-            size: AppSpacing.giant + AppSpacing.giant / 2,
+            size: AppSpacing.giant + AppSpacing.giant / 2 + AppSpacing.xs,
             color: colorScheme.primary,
           ),
         ),
@@ -700,7 +988,6 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildPinBoxes(ColorScheme colorScheme) {
-    const pinLength = 6;
     final currentLength = _pinController.text.length;
 
     return AnimatedBuilder(
@@ -721,41 +1008,51 @@ class _LoginScreenState extends State<LoginScreen>
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(pinLength, (index) {
+            children: List.generate(_pinLength, (index) {
               final isFilled = index < currentLength;
-              final isActive = index == currentLength;
+              final isActive =
+                  index == currentLength && currentLength < _pinLength;
+              final scale = isFilled ? 1.0 : (isActive ? 0.92 : 0.82);
 
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
+              return AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
-                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-                width: 44,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: isFilled
-                      ? colorScheme.onPrimary.withValues(alpha: 0.2)
-                      : colorScheme.onPrimary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(AppRadius.medium),
-                  border: Border.all(
-                    color: isActive
-                        ? colorScheme.onPrimary.withValues(alpha: 0.8)
-                        : isFilled
-                            ? colorScheme.onPrimary.withValues(alpha: 0.4)
-                            : colorScheme.onPrimary.withValues(alpha: 0.15),
-                    width: isActive ? 2 : 1.5,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colorScheme.onPrimary.withValues(
+                      alpha: isFilled ? 0.18 : 0.08,
+                    ),
+                    border: Border.all(
+                      color: isActive
+                          ? colorScheme.onPrimary.withValues(alpha: 0.86)
+                          : isFilled
+                              ? colorScheme.onPrimary.withValues(alpha: 0.5)
+                              : colorScheme.onPrimary.withValues(alpha: 0.25),
+                      width: isActive ? 1.8 : 1.2,
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: isFilled
-                      ? Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colorScheme.onPrimary.withValues(alpha: 0.9),
-                          ),
-                        )
-                      : null,
+                  child: Center(
+                    child: AnimatedScale(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutBack,
+                      scale: isFilled ? 1 : 0,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: colorScheme.onPrimary.withValues(alpha: 0.94),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               );
             }),
@@ -766,7 +1063,7 @@ class _LoginScreenState extends State<LoginScreen>
               controller: _pinController,
               focusNode: _pinFocusNode,
               keyboardType: TextInputType.number,
-              maxLength: pinLength,
+              maxLength: _pinLength,
               autofocus: true,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: const InputDecoration(counterText: ''),
@@ -787,12 +1084,14 @@ class _LoginScreenState extends State<LoginScreen>
         const SizedBox(
           width: 48,
           height: 48,
-          child:
-              CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+          child: CircularProgressIndicator(
+            color: Colors.white,
+            strokeWidth: 2.5,
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
         Text(
-          'Waiting for biometric…',
+          'Waiting for biometric...',
           style: textTheme.bodyMedium?.copyWith(
             color: colorScheme.onPrimary.withValues(alpha: 0.7),
           ),
@@ -816,25 +1115,28 @@ class _LoginScreenState extends State<LoginScreen>
       padding: const EdgeInsets.only(top: AppSpacing.xl),
       child: Column(
         children: [
-          Material(
-            color: colorScheme.onPrimary.withValues(alpha: 0.1),
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: _tryBiometricLogin,
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Icon(
-                  Icons.fingerprint,
-                  size: AppSpacing.giant,
-                  color: colorScheme.onPrimary.withValues(alpha: 0.85),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _tryBiometricLogin,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.large),
                 ),
+                elevation: AppElevation.medium,
+                shadowColor: colorScheme.primary.withValues(alpha: 0.35),
+              ),
+              icon: const Icon(Icons.fingerprint_rounded, size: 22),
+              label: Text(
+                loc.tapToUseBiometrics,
+                style: textTheme.labelLarge,
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            loc.tapToUseBiometrics,
+            'Biometric unlock is available on this device',
             style: textTheme.bodySmall?.copyWith(
               color: colorScheme.onPrimary.withValues(alpha: 0.55),
             ),

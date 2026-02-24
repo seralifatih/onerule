@@ -1,157 +1,314 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
+
 import '../models/password_model.dart';
 import 'field_cipher_service.dart';
 import 'secure_storage_service.dart';
+
+typedef DatabaseOpenOverride = Future<Database> Function({
+  required String path,
+  required String password,
+});
+
+typedef AppDirectoryProvider = Future<Directory> Function();
 
 class DatabaseService {
   DatabaseService({
     SecureStorageService? secureStorage,
     FieldCipherService? fieldCipher,
+    DatabaseOpenOverride? databaseOpenOverride,
+    AppDirectoryProvider? appDirectoryProvider,
   })  : _secureStorage = secureStorage ?? SecureStorageService(),
-        _fieldCipher = fieldCipher ?? FieldCipherService.instance;
+        _fieldCipher = fieldCipher ?? FieldCipherService.instance,
+        _databaseOpenOverride = databaseOpenOverride,
+        _appDirectoryProvider = appDirectoryProvider;
 
-  static const String _boxName = 'passwords';
+  static const String _databaseFileName = 'onerule_vault.db';
+  static const String _tableName = 'passwords';
+  static const String _legacyHiveBoxName = 'passwords';
 
-  late Box<PasswordModel> _box;
   final SecureStorageService _secureStorage;
   final FieldCipherService _fieldCipher;
+  final DatabaseOpenOverride? _databaseOpenOverride;
+  final AppDirectoryProvider? _appDirectoryProvider;
 
-  /// Opens the Hive box, handles legacy key migration if needed,
-  /// then runs the one-time GCM field-encryption migration.
+  Database? _db;
+  List<PasswordModel> _cachedRawModels = <PasswordModel>[];
+
   Future<void> init() async {
     final sessionKey = _secureStorage.getSessionKeyOrThrow();
-    final legacyKey = await _secureStorage.getLegacyEncryptionKey();
+    _db = await _openEncryptedDatabase(sessionKey);
 
-    if (legacyKey != null) {
-      _box = await Hive.openBox<PasswordModel>(
-        _boxName,
-        encryptionCipher: HiveAesCipher(legacyKey),
-      );
-      if (!_isSameKey(legacyKey, sessionKey)) {
-        await reencryptBox(sessionKey);
-      }
-      await _secureStorage.removeLegacyEncryptionKey();
-    } else {
-      _box = await Hive.openBox<PasswordModel>(
-        _boxName,
-        encryptionCipher: HiveAesCipher(sessionKey),
-      );
-    }
-
-    // One-time migration: add GCM field-level encryption to existing records
-    await _migrateToGcmIfNeeded(sessionKey);
+    await _migrateLegacyHiveIfNeeded(sessionKey);
+    await _refreshCache();
+    await _migrateToCurrentCipherEnvelopeIfNeeded(sessionKey);
+    await _refreshCache();
   }
-
-  // ── Public CRUD — all encrypt on write, decrypt on read ──────────────────
 
   List<PasswordModel> getAllPasswords() {
-    // Decryption is async, so we return the raw models here and decrypt
-    // lazily in getPasswordDecrypted(). Callers that need the plaintext
-    // password field must use getAllPasswordsDecrypted().
-    return _box.values.toList();
+    return List<PasswordModel>.from(_cachedRawModels);
   }
 
-  /// Returns all passwords with the password field decrypted.
-  /// Use this everywhere you need to display or copy the password.
   Future<List<PasswordModel>> getAllPasswordsDecrypted() async {
     final sessionKey = _secureStorage.getSessionKeyOrThrow();
+    final raw = await _fetchAllRaw();
     final results = <PasswordModel>[];
-    for (final model in _box.values) {
-      results.add(await _decryptModel(model, sessionKey));
+    for (final model in raw) {
+      try {
+        results.add(await _decryptModel(model, sessionKey));
+      } on FieldCipherException catch (e) {
+        throw VaultDataIntegrityException(
+          'Failed to decrypt vault entry ${model.id}: ${e.message}',
+        );
+      }
     }
     return results;
   }
 
-  /// Returns a single password model with the password field decrypted.
   Future<PasswordModel> getPasswordDecrypted(String id) async {
-    final model = _box.get(id);
-    if (model == null) throw StateError('Record $id not found');
+    final row = await _databaseOrThrow().query(
+      _tableName,
+      where: 'id = ?',
+      whereArgs: <Object>[id],
+      limit: 1,
+    );
+    if (row.isEmpty) {
+      throw StateError('Record $id not found');
+    }
     final sessionKey = _secureStorage.getSessionKeyOrThrow();
-    return _decryptModel(model, sessionKey);
+    final model = _rowToModel(row.first);
+    try {
+      return _decryptModel(model, sessionKey);
+    } on FieldCipherException catch (e) {
+      throw VaultDataIntegrityException(
+        'Failed to decrypt vault entry ${model.id}: ${e.message}',
+      );
+    }
   }
 
-  /// Adds a new password, encrypting the password field with GCM first.
   Future<void> addPassword(PasswordModel password) async {
     final sessionKey = _secureStorage.getSessionKeyOrThrow();
     final encrypted = await _encryptModel(password, sessionKey);
-    await _box.put(encrypted.id, encrypted);
+    await _databaseOrThrow().insert(
+      _tableName,
+      _modelToRow(encrypted),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    _cachedRawModels = <PasswordModel>[
+      encrypted,
+      ..._cachedRawModels.where((item) => item.id != encrypted.id),
+    ];
   }
 
-  /// Deletes a password by id.
   Future<void> deletePassword(String id) async {
-    await _box.delete(id);
+    await _databaseOrThrow().delete(
+      _tableName,
+      where: 'id = ?',
+      whereArgs: <Object>[id],
+    );
+    _cachedRawModels = _cachedRawModels.where((item) => item.id != id).toList();
   }
 
-  /// Updates a password, encrypting the password field with GCM first.
   Future<void> updatePassword(PasswordModel password) async {
     final sessionKey = _secureStorage.getSessionKeyOrThrow();
     final encrypted = await _encryptModel(password, sessionKey);
-    await _box.put(encrypted.id, encrypted);
+    await _databaseOrThrow().update(
+      _tableName,
+      _modelToRow(encrypted),
+      where: 'id = ?',
+      whereArgs: <Object>[encrypted.id],
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    _cachedRawModels = <PasswordModel>[
+      for (final item in _cachedRawModels)
+        if (item.id == encrypted.id) encrypted else item,
+    ];
   }
 
-  /// Deletes all records.
   Future<void> deleteAllPasswords() async {
-    await _box.clear();
+    await _databaseOrThrow().delete(_tableName);
+    _cachedRawModels = <PasswordModel>[];
   }
 
-  /// Re-encrypts the entire box with a new Hive key (used on PIN change).
-  /// Also re-encrypts GCM field values with the new session key.
   Future<void> reencryptBox(List<int> newKey) async {
+    final database = _databaseOrThrow();
     final oldSessionKey = _secureStorage.getSessionKeyOrThrow();
+    final rows = await _fetchAllRaw();
 
-    // 1. Decrypt all password fields with the OLD session key
     final decryptedItems = <PasswordModel>[];
-    for (final model in _box.values) {
+    for (final model in rows) {
       decryptedItems.add(await _decryptModel(model, oldSessionKey));
     }
 
-    // 2. Re-open box with new Hive cipher key
-    await _box.close();
-    await Hive.deleteBoxFromDisk(_boxName);
-    _box = await Hive.openBox<PasswordModel>(
-      _boxName,
-      encryptionCipher: HiveAesCipher(newKey),
+    await database.execute(
+      "PRAGMA rekey = '${_escapeSqlString(_sqlCipherPasswordFromKey(newKey))}'",
     );
 
-    // 3. Re-encrypt password fields with the NEW session key and write back
+    final batch = database.batch();
     for (final item in decryptedItems) {
       final encrypted = await _encryptModel(item, newKey);
-      await _box.put(encrypted.id, encrypted);
+      batch.update(
+        _tableName,
+        _modelToRow(encrypted),
+        where: 'id = ?',
+        whereArgs: <Object>[encrypted.id],
+      );
     }
+    await batch.commit(noResult: true);
+
+    await _refreshCache();
   }
 
   Future<void> close() async {
-    await _box.close();
-  }
-
-  @visibleForTesting
-  void attachBoxForTesting(Box<PasswordModel> box) {
-    _box = box;
+    final database = _db;
+    _db = null;
+    if (database != null) {
+      await database.close();
+    }
   }
 
   @visibleForTesting
   Future<void> migrateToGcmIfNeededForTesting(List<int> sessionKey) {
-    return _migrateToGcmIfNeeded(sessionKey);
+    return _migrateToCurrentCipherEnvelopeIfNeeded(sessionKey);
   }
 
-  // ── GCM field encryption helpers ──────────────────────────────────────────
+  Future<Database> _openEncryptedDatabase(List<int> sessionKey) async {
+    final directory = await _getApplicationDirectory();
+    final dbPath =
+        '${directory.path}${Platform.pathSeparator}$_databaseFileName';
+    final password = _sqlCipherPasswordFromKey(sessionKey);
 
-  /// Encrypts the password field of [model] with GCM.
-  /// All other fields (title, username, category) stay plaintext so search
-  /// and filtering continue to work without decryption overhead.
+    final databaseOpenOverride = _databaseOpenOverride;
+    if (databaseOpenOverride != null) {
+      final database = await databaseOpenOverride(
+        path: dbPath,
+        password: password,
+      );
+      await _createSchema(database);
+      return database;
+    }
+
+    return openDatabase(
+      dbPath,
+      password: password,
+      version: 1,
+      onCreate: (database, _) async {
+        await _createSchema(database);
+      },
+      onOpen: (database) async => _createSchema(database),
+    );
+  }
+
+  Future<void> _createSchema(Database database) async {
+    await database.execute('''
+      CREATE TABLE IF NOT EXISTS $_tableName (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        username TEXT NOT NULL,
+        password TEXT NOT NULL,
+        url TEXT,
+        createdDate TEXT NOT NULL,
+        lastModified TEXT,
+        category TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _migrateLegacyHiveIfNeeded(List<int> sessionKey) async {
+    if (await _secureStorage.hasCompletedSqlCipherMigration()) {
+      return;
+    }
+
+    final records = await _readLegacyHiveRecords(sessionKey);
+    if (records.isNotEmpty) {
+      final database = _databaseOrThrow();
+      final batch = database.batch();
+      for (final record in records) {
+        batch.insert(
+          _tableName,
+          _modelToRow(record),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+      await batch.commit(noResult: true);
+    }
+
+    await _secureStorage.setSqlCipherMigrationCompleted();
+  }
+
+  Future<List<PasswordModel>> _readLegacyHiveRecords(
+      List<int> sessionKey) async {
+    final appDir = await _getApplicationDirectory();
+    final hivePath = appDir.path;
+
+    if (!await Hive.boxExists(_legacyHiveBoxName, path: hivePath)) {
+      return <PasswordModel>[];
+    }
+
+    Hive.init(hivePath);
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(PasswordModelAdapter());
+    }
+
+    final legacyKey = await _secureStorage.getLegacyEncryptionKey();
+    final keyCandidates = <List<int>>[
+      sessionKey,
+      if (legacyKey != null) legacyKey,
+    ];
+
+    Box<PasswordModel>? box;
+    List<PasswordModel> records = <PasswordModel>[];
+    for (final key in keyCandidates) {
+      try {
+        box = await Hive.openBox<PasswordModel>(
+          _legacyHiveBoxName,
+          encryptionCipher: HiveAesCipher(key),
+        );
+        records = box.values.toList();
+        break;
+      } catch (_) {
+        if (Hive.isBoxOpen(_legacyHiveBoxName)) {
+          await Hive.box<PasswordModel>(_legacyHiveBoxName).close();
+        }
+      }
+    }
+
+    if (box != null && box.isOpen) {
+      await box.close();
+      await Hive.deleteBoxFromDisk(_legacyHiveBoxName, path: hivePath);
+      await _secureStorage.removeLegacyEncryptionKey();
+    }
+
+    return records;
+  }
+
+  Future<void> _refreshCache() async {
+    _cachedRawModels = await _fetchAllRaw();
+  }
+
+  Future<List<PasswordModel>> _fetchAllRaw() async {
+    final rows = await _databaseOrThrow().query(_tableName);
+    return rows.map(_rowToModel).toList();
+  }
+
   Future<PasswordModel> _encryptModel(
     PasswordModel model,
     List<int> sessionKey,
   ) async {
-    // If somehow already encrypted (shouldn't happen via public API but
-    // guard anyway), don't double-encrypt.
-    if (_fieldCipher.looksEncrypted(model.password)) return model;
+    if (_fieldCipher.isCurrentEnvelope(model.password)) {
+      return model;
+    }
 
-    final encryptedPassword = await _fieldCipher.encrypt(
-      model.password,
-      sessionKey,
-    );
+    final sourcePassword = _fieldCipher.looksEncrypted(model.password)
+        ? await _fieldCipher.decrypt(model.password, sessionKey)
+        : model.password;
+    final encryptedPassword =
+        await _fieldCipher.encrypt(sourcePassword, sessionKey);
 
     return PasswordModel(
       id: model.id,
@@ -165,115 +322,153 @@ class DatabaseService {
     );
   }
 
-  /// Decrypts the password field of [model].
-  /// If the field is not encrypted (legacy plaintext), returns as-is.
   Future<PasswordModel> _decryptModel(
     PasswordModel model,
     List<int> sessionKey,
   ) async {
     if (!_fieldCipher.looksEncrypted(model.password)) {
-      // Plaintext legacy record — return as-is, migration will handle it
       return model;
     }
 
-    try {
-      final plainPassword = await _fieldCipher.decrypt(
-        model.password,
-        sessionKey,
-      );
-      return PasswordModel(
-        id: model.id,
-        title: model.title,
-        username: model.username,
-        password: plainPassword,
-        url: model.url,
-        createdDate: model.createdDate,
-        lastModified: model.lastModified,
-        category: model.category,
-      );
-    } on FieldCipherException catch (e) {
-      // Log but do not crash — return model with password field replaced
-      // by a safe placeholder so the app remains usable.
-      if (kDebugMode) debugPrint('[DatabaseService] decrypt error: $e');
-      return PasswordModel(
-        id: model.id,
-        title: model.title,
-        username: model.username,
-        password: '[decryption error]',
-        url: model.url,
-        createdDate: model.createdDate,
-        lastModified: model.lastModified,
-        category: model.category,
-      );
-    }
+    final plainPassword = await _fieldCipher.decrypt(
+      model.password,
+      sessionKey,
+    );
+    return PasswordModel(
+      id: model.id,
+      title: model.title,
+      username: model.username,
+      password: plainPassword,
+      url: model.url,
+      createdDate: model.createdDate,
+      lastModified: model.lastModified,
+      category: model.category,
+    );
   }
 
-  // ── One-time GCM migration ────────────────────────────────────────────────
-
-  /// Runs once after first install of the version that adds GCM field
-  /// encryption. Reads every record, detects plaintext password fields,
-  /// encrypts them with GCM, writes back. Sets a flag when complete so it
-  /// never runs again.
-  ///
-  /// If the process is interrupted (crash, force-quit), the flag is not set
-  /// and the migration retries on next open. Already-migrated records are
-  /// detected via [FieldCipherService.looksEncrypted] and skipped, so
-  /// partial runs are safe.
-  Future<void> _migrateToGcmIfNeeded(List<int> sessionKey) async {
-    final done = await _secureStorage.hasCompletedGcmMigration();
-    if (done) return;
-
+  Future<void> _migrateToCurrentCipherEnvelopeIfNeeded(
+      List<int> sessionKey) async {
     if (kDebugMode) {
-      debugPrint('[DatabaseService] Starting GCM field migration');
+      debugPrint('[DatabaseService] Starting field cipher envelope migration');
     }
 
-    int migrated = 0;
-    for (final model in _box.values.toList()) {
-      if (_fieldCipher.looksEncrypted(model.password)) continue;
-
+    final rows = await _fetchAllRaw();
+    var migrated = 0;
+    for (final model in rows) {
       try {
-        final encryptedPassword = await _fieldCipher.encrypt(
+        final migratedPassword =
+            await _fieldCipher.migrateToCurrentEnvelopeIfNeeded(
           model.password,
           sessionKey,
         );
-        // Write directly to box — not through addPassword() to avoid a
-        // double-encrypt guard triggering.
+        if (migratedPassword == null) {
+          continue;
+        }
+
         final updated = PasswordModel(
           id: model.id,
           title: model.title,
           username: model.username,
-          password: encryptedPassword,
+          password: migratedPassword,
           url: model.url,
           createdDate: model.createdDate,
           lastModified: model.lastModified,
           category: model.category,
         );
-        await _box.put(updated.id, updated);
+        await _databaseOrThrow().transaction((txn) async {
+          final updatedRows = await txn.update(
+            _tableName,
+            _modelToRow(updated),
+            where: 'id = ?',
+            whereArgs: <Object>[updated.id],
+          );
+          if (updatedRows != 1) {
+            throw StateError(
+              'Atomic migration failed for ${updated.id}. Expected 1 row update, got $updatedRows.',
+            );
+          }
+        });
         migrated++;
+      } on FieldCipherException catch (e) {
+        throw VaultDataIntegrityException(
+          'Failed to migrate vault entry ${model.id}: ${e.message}',
+        );
       } catch (e) {
-        // One record failing should not abort the entire migration.
-        // The record will be retried on next open.
-        if (kDebugMode) {
-          debugPrint('[DatabaseService] Migration error for ${model.id}: $e');
-        }
+        throw VaultDataIntegrityException(
+          'Unexpected migration error for vault entry ${model.id}: $e',
+        );
       }
     }
 
-    // Only mark complete if we processed every record without a hard error
-    await _secureStorage.setGcmMigrationCompleted();
-    if (kDebugMode) {
+    if (kDebugMode && migrated > 0) {
       debugPrint(
-          '[DatabaseService] GCM migration done. Records migrated: $migrated');
+        '[DatabaseService] Field cipher envelope migration done. Records migrated: $migrated',
+      );
     }
   }
 
-  // ── Utility ───────────────────────────────────────────────────────────────
-
-  bool _isSameKey(List<int> a, List<int> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
+  Map<String, Object?> _modelToRow(PasswordModel model) {
+    return <String, Object?>{
+      'id': model.id,
+      'title': model.title,
+      'username': model.username,
+      'password': model.password,
+      'url': model.url,
+      'createdDate': model.createdDate.toUtc().toIso8601String(),
+      'lastModified': model.lastModified?.toUtc().toIso8601String(),
+      'category': model.category,
+    };
   }
+
+  PasswordModel _rowToModel(Map<String, Object?> row) {
+    final createdDateRaw = row['createdDate'] as String? ?? '';
+    final lastModifiedRaw = row['lastModified'] as String?;
+
+    return PasswordModel(
+      id: row['id'] as String? ?? '',
+      title: row['title'] as String? ?? '',
+      username: row['username'] as String? ?? '',
+      password: row['password'] as String? ?? '',
+      url: row['url'] as String?,
+      createdDate: DateTime.tryParse(createdDateRaw)?.toLocal() ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      lastModified: lastModifiedRaw == null
+          ? null
+          : DateTime.tryParse(lastModifiedRaw)?.toLocal(),
+      category: row['category'] as String? ?? 'General',
+    );
+  }
+
+  String _sqlCipherPasswordFromKey(List<int> key) {
+    return base64UrlEncode(key);
+  }
+
+  String _escapeSqlString(String value) {
+    return value.replaceAll("'", "''");
+  }
+
+  Database _databaseOrThrow() {
+    final database = _db;
+    if (database == null) {
+      throw StateError('DatabaseService.init() must be called before use.');
+    }
+    return database;
+  }
+
+  Future<Directory> _getApplicationDirectory() async {
+    final provider = _appDirectoryProvider;
+    if (provider != null) {
+      return provider();
+    }
+    return getApplicationDocumentsDirectory();
+  }
+}
+
+class VaultDataIntegrityException implements Exception {
+  const VaultDataIntegrityException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'VaultDataIntegrityException: $message';
 }

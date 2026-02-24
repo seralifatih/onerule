@@ -23,23 +23,55 @@ void main() {
     );
 
     final exportedJson = jsonDecode(exported) as Map<String, dynamic>;
+    final envelope = exportedJson['envelope'] as Map<String, dynamic>;
 
     expect(exported.contains('super-secret'), isFalse);
     expect(exported.contains('dev@onerule.app'), isFalse);
-    expect(exportedJson['v'], 2);
+    expect(exportedJson['v'], 3);
+    expect(envelope['algorithm'], 'AES-GCM-256');
     expect((exportedJson['meta'] as Map<String, dynamic>)['itemCount'], 1);
 
-    final imported = await service.decryptEncryptedBackup(
+    final imported = await service.decryptEncryptedBackupStrict(
       encryptedPayload: exported,
       passphrase: 'correct horse battery staple',
     );
 
-    expect(imported, isNotNull);
-    expect((imported!.first as Map)['title'], 'Github');
+    expect((imported.first as Map)['title'], 'Github');
     expect((imported.first as Map)['username'], 'dev@onerule.app');
   });
 
-  test('encrypted backup import fails with incorrect passphrase', () async {
+  test('decrypts legacy CBC backup and migrates to latest envelope', () async {
+    final service = BackupService();
+
+    final legacy = await service.createLegacyCbcBackupForTesting(
+      records: <Map<String, dynamic>>[
+        {
+          'title': 'Legacy',
+          'username': 'legacy@example.com',
+          'password': 'old-cbc-secret',
+          'category': 'General',
+        },
+      ],
+      passphrase: 'legacy-passphrase',
+    );
+
+    final imported = await service.decryptEncryptedBackupStrict(
+      encryptedPayload: legacy,
+      passphrase: 'legacy-passphrase',
+    );
+    expect((imported.first as Map)['password'], 'old-cbc-secret');
+
+    final migrated = await service.migrateEncryptedBackupToLatest(
+      encryptedPayload: legacy,
+      passphrase: 'legacy-passphrase',
+    );
+
+    expect(migrated, isNotNull);
+    final migratedJson = jsonDecode(migrated!) as Map<String, dynamic>;
+    expect(migratedJson['v'], 3);
+  });
+
+  test('backup tamper detection hard-fails with clear error', () async {
     final service = BackupService();
 
     final exported = await service.createEncryptedBackup(
@@ -54,11 +86,61 @@ void main() {
       passphrase: 'right-passphrase',
     );
 
-    final imported = await service.decryptEncryptedBackup(
-      encryptedPayload: exported,
-      passphrase: 'wrong-passphrase',
+    final payload = jsonDecode(exported) as Map<String, dynamic>;
+    final envelope = Map<String, dynamic>.from(payload['envelope'] as Map);
+    final tagBytes = base64Url.decode(_repad(envelope['tag'] as String));
+    tagBytes[tagBytes.length - 1] ^= 0x01;
+    envelope['tag'] = base64Url.encode(tagBytes).replaceAll('=', '');
+    payload['envelope'] = envelope;
+
+    expect(
+      () => service.decryptEncryptedBackupStrict(
+        encryptedPayload: jsonEncode(payload),
+        passphrase: 'right-passphrase',
+      ),
+      throwsA(
+        isA<BackupCipherException>().having(
+          (e) => e.message,
+          'message',
+          contains('authentication failed'),
+        ),
+      ),
+    );
+  });
+
+  test('wrong backup passphrase fails with authentication error', () async {
+    final service = BackupService();
+
+    final exported = await service.createEncryptedBackup(
+      records: <Map<String, dynamic>>[
+        {
+          'title': 'Email',
+          'username': 'user@example.com',
+          'password': 'pw-123',
+          'category': 'General',
+        },
+      ],
+      passphrase: 'right-passphrase',
     );
 
-    expect(imported, isNull);
+    expect(
+      () => service.decryptEncryptedBackupStrict(
+        encryptedPayload: exported,
+        passphrase: 'wrong-passphrase',
+      ),
+      throwsA(
+        isA<BackupCipherException>().having(
+          (e) => e.message,
+          'message',
+          contains('authentication failed'),
+        ),
+      ),
+    );
   });
+}
+
+String _repad(String value) {
+  final remainder = value.length % 4;
+  if (remainder == 0) return value;
+  return value + '=' * (4 - remainder);
 }
