@@ -903,7 +903,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             title: const Text('Backup reminder'),
             subtitle: const Text(
-              'Remind me in 7 days to test restore.',
+              'Monthly reminder when your last backup is older than 30 days.',
             ),
             value: securitySettings.backupReminderEnabled,
             onChanged: (enabled) async {

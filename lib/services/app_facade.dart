@@ -181,16 +181,47 @@ class BackupFacade {
 
   Future<DateTime?> getLastBackupAt() => _backupService.getLastBackupAt();
 
-  Future<void> exportPasswords(
-      BuildContext context, PasswordProvider provider) async {
+  Future<BackupPreparation> prepareBackup({
+    required PasswordProvider provider,
+    required String passphrase,
+  }) async {
     final records = provider.passwords.map(_toRecord).toList();
-    await _backupService.exportPasswords(context, records);
+    return _backupService.prepareEncryptedBackup(
+      records: records,
+      passphrase: passphrase,
+    );
   }
 
-  Future<void> importPasswords(
-      BuildContext context, PasswordProvider provider) async {
-    await _backupService.importPasswords(
-      context,
+  Future<BackupExportResult?> saveBackupToDownloads(
+    BackupPreparation preparation,
+  ) {
+    return _backupService.savePreparedBackupToDownloads(
+      preparation: preparation,
+    );
+  }
+
+  Future<BackupExportResult> shareBackup({
+    required BackupPreparation preparation,
+    required String shareText,
+  }) {
+    return _backupService.sharePreparedBackup(
+      preparation: preparation,
+      shareText: shareText,
+    );
+  }
+
+  Future<File?> pickBackupFileForRestore() {
+    return _backupService.pickBackupFileForRestore();
+  }
+
+  Future<BackupRestoreResult> restoreFromFile({
+    required PasswordProvider provider,
+    required File file,
+    required String passphrase,
+  }) {
+    return _backupService.restoreFromFile(
+      file: file,
+      passphrase: passphrase,
       addRecord: (record) => _addRecord(provider, record),
     );
   }

@@ -150,6 +150,49 @@
     "backupPassphraseConfirmHint": "Re-enter backup password",
     "backupPassphraseMismatch": "Passwords do not match.",
     "backupPassphraseEmpty": "Password cannot be empty.",
+    "backupWizardTitle": "Create Backup",
+    "backupWizardProgress": "Step {current} of {total}",
+    "@backupWizardProgress": {
+        "placeholders": {
+            "current": {
+                "type": "int"
+            },
+            "total": {
+                "type": "int"
+            }
+        }
+    },
+    "backupWizardStep1Title": "Step 1: Create backup",
+    "backupWizardStep1Body": "Your backup file is encrypted (.enc). It can only be opened with your backup PIN.",
+    "backupWizardCreateAction": "Create encrypted backup",
+    "backupWizardStep2Title": "Step 2: Choose destination",
+    "backupWizardStep2Body": "Choose where to save your encrypted backup file.",
+    "backupWizardDestinationDownloads": "Downloads",
+    "backupWizardDestinationShare": "Share",
+    "backupWizardStep3Title": "Step 3: Confirm success",
+    "backupWizardSuccessBody": "Encrypted backup created successfully.",
+    "backupWizardFilename": "Filename: {fileName}",
+    "@backupWizardFilename": {
+        "placeholders": {
+            "fileName": {}
+        }
+    },
+    "backupWizardBackAction": "Back",
+    "backupWizardDoneAction": "Done",
+    "restoreSectionTitle": "Restore from backup",
+    "restoreSectionDescription": "Pick an encrypted backup file and enter its backup PIN to restore.",
+    "restorePickFileCta": "Choose backup file",
+    "restoreNoFileChosen": "No file selected",
+    "restoreSelectedFile": "Selected file: {fileName}",
+    "@restoreSelectedFile": {
+        "placeholders": {
+            "fileName": {}
+        }
+    },
+    "restoreSelectFileFirst": "Choose a backup file first.",
+    "restoreWrongPin": "Wrong backup PIN. Try again.",
+    "restoreCorruptFile": "This backup file is corrupt or unsupported.",
+    "restoreUnknownError": "Restore failed. Please try again.",
     "legacyImportWarningTitle": "Legacy JSON import",
     "legacyImportWarningBody": "This JSON backup is unencrypted. Importing it may expose your passwords to other apps or services. Continue only if you trust the file and environment.",
     "legacyImportConfirm": "Import anyway",

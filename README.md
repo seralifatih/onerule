@@ -47,7 +47,7 @@ https://seralifatih.github.io/OneRuleWeb/
 - Canonical security spec: [docs/security-architecture.md](docs/security-architecture.md)
 - Vault data at rest: SQLCipher-encrypted SQLite + app-level AES-256-GCM for the sensitive password field
 - PIN/key derivation: PBKDF2-HMAC-SHA256 (100k iterations) with per-install/per-secret salts in secure storage
-- Backup encryption: passphrase-based AES-256-GCM backups (`.onerule`) with PBKDF2-HMAC-SHA256 (200k iterations)
+- Backup encryption: passphrase-based AES-256-GCM backups (`.enc`) with PBKDF2-HMAC-SHA256 (200k iterations)
 
 Use the security architecture document above as the source of truth for implementation details and threat model assumptions.
 

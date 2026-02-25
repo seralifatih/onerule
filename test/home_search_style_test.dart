@@ -94,7 +94,7 @@ void _expectSearchFieldStyle({
   );
   expect(
     decoration.hintStyle?.color,
-    expectedTheme.colorScheme.onSurface.withValues(alpha: 0.45),
+    expectedTheme.colorScheme.onSurface.withValues(alpha: 0.72),
   );
 }
 

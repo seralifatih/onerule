@@ -412,6 +412,86 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupPassphraseEmpty => 'Password cannot be empty.';
 
   @override
+  String get backupWizardTitle => 'Create Backup';
+
+  @override
+  String backupWizardProgress(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get backupWizardStep1Title => 'Step 1: Create backup';
+
+  @override
+  String get backupWizardStep1Body =>
+      'Your backup file is encrypted (.enc). It can only be opened with your backup PIN.';
+
+  @override
+  String get backupWizardCreateAction => 'Create encrypted backup';
+
+  @override
+  String get backupWizardStep2Title => 'Step 2: Choose destination';
+
+  @override
+  String get backupWizardStep2Body =>
+      'Choose where to save your encrypted backup file.';
+
+  @override
+  String get backupWizardDestinationDownloads => 'Downloads';
+
+  @override
+  String get backupWizardDestinationShare => 'Share';
+
+  @override
+  String get backupWizardStep3Title => 'Step 3: Confirm success';
+
+  @override
+  String get backupWizardSuccessBody =>
+      'Encrypted backup created successfully.';
+
+  @override
+  String backupWizardFilename(Object fileName) {
+    return 'Filename: $fileName';
+  }
+
+  @override
+  String get backupWizardBackAction => 'Back';
+
+  @override
+  String get backupWizardDoneAction => 'Done';
+
+  @override
+  String get restoreSectionTitle => 'Restore from backup';
+
+  @override
+  String get restoreSectionDescription =>
+      'Pick an encrypted backup file and enter its backup PIN to restore.';
+
+  @override
+  String get restorePickFileCta => 'Choose backup file';
+
+  @override
+  String get restoreNoFileChosen => 'No file selected';
+
+  @override
+  String restoreSelectedFile(Object fileName) {
+    return 'Selected file: $fileName';
+  }
+
+  @override
+  String get restoreSelectFileFirst => 'Choose a backup file first.';
+
+  @override
+  String get restoreWrongPin => 'Wrong backup PIN. Try again.';
+
+  @override
+  String get restoreCorruptFile =>
+      'This backup file is corrupt or unsupported.';
+
+  @override
+  String get restoreUnknownError => 'Restore failed. Please try again.';
+
+  @override
   String get legacyImportWarningTitle => 'Legacy JSON import';
 
   @override

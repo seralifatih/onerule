@@ -150,6 +150,49 @@
     "backupPassphraseConfirmHint": "Backup-Passwort erneut eingeben",
     "backupPassphraseMismatch": "Passwörter stimmen nicht überein.",
     "backupPassphraseEmpty": "Passwort darf nicht leer sein.",
+    "backupWizardTitle": "Backup erstellen",
+    "backupWizardProgress": "Schritt {current} von {total}",
+    "@backupWizardProgress": {
+        "placeholders": {
+            "current": {
+                "type": "int"
+            },
+            "total": {
+                "type": "int"
+            }
+        }
+    },
+    "backupWizardStep1Title": "Schritt 1: Backup erstellen",
+    "backupWizardStep1Body": "Deine Backup-Datei ist verschlüsselt (.enc). Sie kann nur mit deiner Backup-PIN geöffnet werden.",
+    "backupWizardCreateAction": "Verschlüsseltes Backup erstellen",
+    "backupWizardStep2Title": "Schritt 2: Ziel wählen",
+    "backupWizardStep2Body": "Wähle, wo die verschlüsselte Backup-Datei gespeichert werden soll.",
+    "backupWizardDestinationDownloads": "Downloads",
+    "backupWizardDestinationShare": "Teilen",
+    "backupWizardStep3Title": "Schritt 3: Erfolg bestätigen",
+    "backupWizardSuccessBody": "Verschlüsseltes Backup erfolgreich erstellt.",
+    "backupWizardFilename": "Dateiname: {fileName}",
+    "@backupWizardFilename": {
+        "placeholders": {
+            "fileName": {}
+        }
+    },
+    "backupWizardBackAction": "Zurück",
+    "backupWizardDoneAction": "Fertig",
+    "restoreSectionTitle": "Aus Backup wiederherstellen",
+    "restoreSectionDescription": "Wähle eine verschlüsselte Backup-Datei und gib die Backup-PIN ein.",
+    "restorePickFileCta": "Backup-Datei auswählen",
+    "restoreNoFileChosen": "Keine Datei ausgewählt",
+    "restoreSelectedFile": "Ausgewählte Datei: {fileName}",
+    "@restoreSelectedFile": {
+        "placeholders": {
+            "fileName": {}
+        }
+    },
+    "restoreSelectFileFirst": "Bitte zuerst eine Backup-Datei auswählen.",
+    "restoreWrongPin": "Falsche Backup-PIN. Bitte erneut versuchen.",
+    "restoreCorruptFile": "Diese Backup-Datei ist beschädigt oder nicht unterstützt.",
+    "restoreUnknownError": "Wiederherstellung fehlgeschlagen. Bitte erneut versuchen.",
     "legacyImportWarningTitle": "Legacy-JSON-Import",
     "legacyImportWarningBody": "Dieses JSON-Backup ist unverschlüsselt. Beim Import können Passwörter anderen Apps oder Diensten zugänglich werden. Fahren Sie nur fort, wenn Sie der Datei und der Umgebung vertrauen.",
     "legacyImportConfirm": "Trotzdem importieren",

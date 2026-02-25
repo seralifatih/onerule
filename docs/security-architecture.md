@@ -86,7 +86,7 @@ Rationale (as implemented today):
 
 ## 4) Backup Format and Encryption
 
-- Export format is JSON (`.onerule`) with schema version `v: 3`.
+- Export format is JSON (`.enc`) with schema version `v: 3`.
 - Backup encryption:
   - KDF: PBKDF2-HMAC-SHA256
   - iterations: 200,000
@@ -100,7 +100,8 @@ Rationale (as implemented today):
   - `cipher` metadata
   - `meta` (`createdAt`, `itemCount`).
 - Import supports:
-  - legacy plaintext JSON backups (`.json`) behind an explicit warning prompt
+  - encrypted `.enc` backups (current default)
+  - encrypted `.onerule` backups (legacy extension compatibility)
   - encrypted backup schema `v: 2` (legacy GCM layout)
   - encrypted backup schema `v: 1` (legacy CBC or legacy GCM layout).
 

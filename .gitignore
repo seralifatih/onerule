@@ -90,3 +90,8 @@ Desktop.ini
 # VS Code local workspace settings (machine-specific)
 .vscode/
 .cache/
+
+# OneRule local runtime artifacts (sensitive/local-only)
+OneRule_backup_*.enc
+onerule_debug.log
+**/onerule_debug.log

@@ -8,9 +8,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'secure_storage_service.dart';
+
 class BackupReminderService {
-  BackupReminderService._internal({FlutterLocalNotificationsPlugin? plugin})
-      : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  BackupReminderService._internal({
+    FlutterLocalNotificationsPlugin? plugin,
+    SecureStorageService? secureStorage,
+  })  : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+        _secureStorage = secureStorage ?? SecureStorageService();
 
   static final BackupReminderService instance =
       BackupReminderService._internal();
@@ -18,20 +23,23 @@ class BackupReminderService {
   static const String _channelId = 'backup_restore_reminder';
   static const String _channelName = 'Backup reminders';
   static const String _channelDescription =
-      'One-time reminders to test backup restore.';
+      'Monthly reminders to refresh your encrypted OneRule backup.';
   static const int _notificationId = 7107;
 
   static const String _vaultCreatedAtUtcKey = 'vaultCreatedAtUtc';
   static const String _backupReminderScheduledKey = 'backupReminderScheduled';
+  static const String _backupReminderScheduledAtUtcKey =
+      'backupReminderScheduledAtUtc';
   static const String _backupReminderPermissionPromptedKey =
       'backupReminderPermissionPrompted';
   static const String _backupReminderPermissionGrantedKey =
       'backupReminderPermissionGranted';
   static const String _backupReminderEnabledKey = 'backupReminderEnabled';
 
-  static const Duration _delayAfterVaultCreation = Duration(days: 7);
+  static const Duration _backupFreshnessWindow = Duration(days: 30);
 
   final FlutterLocalNotificationsPlugin _plugin;
+  final SecureStorageService _secureStorage;
 
   bool _initialized = false;
   tz.Location _location = tz.UTC;
@@ -50,6 +58,13 @@ class BackupReminderService {
       await _plugin.initialize(settings);
       await _configureTimezone();
       _initialized = true;
+
+      unawaited(
+        _scheduleReminderIfEligible(
+          requestPermissionIfNeeded: false,
+          forceReschedule: false,
+        ),
+      );
     } catch (_) {
       // Notification stack may be unavailable in test environments.
     }
@@ -67,6 +82,16 @@ class BackupReminderService {
     unawaited(
       _scheduleReminderIfEligible(
         requestPermissionIfNeeded: true,
+        forceReschedule: false,
+      ),
+    );
+  }
+
+  Future<void> onBackupCreated(DateTime _) async {
+    unawaited(
+      _scheduleReminderIfEligible(
+        requestPermissionIfNeeded: false,
+        forceReschedule: true,
       ),
     );
   }
@@ -79,6 +104,7 @@ class BackupReminderService {
 
     await _scheduleReminderIfEligible(
       requestPermissionIfNeeded: false,
+      forceReschedule: true,
     );
   }
 
@@ -92,10 +118,12 @@ class BackupReminderService {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_backupReminderScheduledKey, false);
+    await prefs.remove(_backupReminderScheduledAtUtcKey);
   }
 
   Future<void> _scheduleReminderIfEligible({
     required bool requestPermissionIfNeeded,
+    required bool forceReschedule,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -106,22 +134,15 @@ class BackupReminderService {
 
     final alreadyScheduled =
         prefs.getBool(_backupReminderScheduledKey) ?? false;
-    if (alreadyScheduled) {
+    final hasNextScheduledAt =
+        prefs.getString(_backupReminderScheduledAtUtcKey) != null;
+
+    if (alreadyScheduled && hasNextScheduledAt && !forceReschedule) {
       return;
     }
 
-    final createdAtRaw = prefs.getString(_vaultCreatedAtUtcKey);
-    if (createdAtRaw == null || createdAtRaw.isEmpty) {
-      return;
-    }
-
-    final createdAtUtc = DateTime.tryParse(createdAtRaw)?.toUtc();
-    if (createdAtUtc == null) {
-      return;
-    }
-
-    final fireAtUtc = createdAtUtc.add(_delayAfterVaultCreation);
-    if (!fireAtUtc.isAfter(DateTime.now().toUtc())) {
+    final referenceUtc = await _resolveBackupReferenceUtc(prefs);
+    if (referenceUtc == null) {
       return;
     }
 
@@ -135,7 +156,28 @@ class BackupReminderService {
 
     await initialize();
 
+    try {
+      await _plugin.cancel(_notificationId);
+    } catch (_) {
+      // Ignore cancellation failures and continue with scheduling.
+    }
+
+    final nowUtc = DateTime.now().toUtc();
+    final dueUtc = referenceUtc.add(_backupFreshnessWindow);
+
+    DateTime fireAtUtc;
+    int daysSinceBackup;
+
+    if (dueUtc.isAfter(nowUtc)) {
+      fireAtUtc = dueUtc;
+      daysSinceBackup = fireAtUtc.difference(referenceUtc).inDays;
+    } else {
+      fireAtUtc = nowUtc.add(const Duration(minutes: 1));
+      daysSinceBackup = nowUtc.difference(referenceUtc).inDays;
+    }
+
     final scheduleAt = tz.TZDateTime.from(fireAtUtc.toLocal(), _location);
+
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         _channelId,
@@ -151,17 +193,42 @@ class BackupReminderService {
       await _plugin.zonedSchedule(
         _notificationId,
         'OneRule',
-        'Test your backup: make sure you can restore your vault if you lose this phone.',
+        _buildReminderBody(daysSinceBackup),
         scheduleAt,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
       );
+
       await prefs.setBool(_backupReminderScheduledKey, true);
+      await prefs.setString(
+        _backupReminderScheduledAtUtcKey,
+        fireAtUtc.toIso8601String(),
+      );
     } catch (_) {
       // Scheduling is best-effort only.
     }
+  }
+
+  Future<DateTime?> _resolveBackupReferenceUtc(SharedPreferences prefs) async {
+    final lastBackupLocal = await _secureStorage.getLastBackupAt();
+    if (lastBackupLocal != null) {
+      return lastBackupLocal.toUtc();
+    }
+
+    final createdAtRaw = prefs.getString(_vaultCreatedAtUtcKey);
+    if (createdAtRaw == null || createdAtRaw.isEmpty) {
+      return null;
+    }
+
+    return DateTime.tryParse(createdAtRaw)?.toUtc();
+  }
+
+  String _buildReminderBody(int daysSinceBackup) {
+    final effectiveDays = daysSinceBackup < 30 ? 30 : daysSinceBackup;
+    return 'Last backup: $effectiveDays days ago. Create a new one?';
   }
 
   Future<void> _configureTimezone() async {

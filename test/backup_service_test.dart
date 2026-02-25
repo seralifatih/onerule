@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:offline_pass_manager/services/backup_service.dart';
@@ -136,6 +137,69 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('auto backup filename uses OneRule_backup_YYYY_MM_DD.enc format', () {
+    final service = BackupService();
+    final fileName =
+        service.buildAutoBackupFileName(now: DateTime(2026, 2, 25, 14, 30));
+
+    expect(fileName, 'OneRule_backup_2026_02_25.enc');
+  });
+
+  test('restore reports wrong PIN state for encrypted backup auth failure',
+      () async {
+    final service = BackupService();
+    final tempDir = await Directory.systemTemp.createTemp('onerule-restore-');
+    final file = File('${tempDir.path}${Platform.pathSeparator}sample.enc');
+
+    try {
+      final exported = await service.createEncryptedBackup(
+        records: <Map<String, dynamic>>[
+          {
+            'title': 'Email',
+            'username': 'user@example.com',
+            'password': 'pw-123',
+            'category': 'General',
+          },
+        ],
+        passphrase: 'correct-passphrase',
+      );
+
+      await file.writeAsString(exported, flush: true);
+
+      final result = await service.restoreFromFile(
+        file: file,
+        passphrase: 'wrong-passphrase',
+        addRecord: (_) async {},
+      );
+
+      expect(result.isSuccess, isFalse);
+      expect(result.failure, BackupRestoreFailure.wrongPin);
+    } finally {
+      await tempDir.delete(recursive: true);
+    }
+  });
+
+  test('restore reports corrupt file for malformed backup payload', () async {
+    final service = BackupService();
+    final tempDir = await Directory.systemTemp.createTemp('onerule-restore-');
+    final file = File('${tempDir.path}${Platform.pathSeparator}broken.enc');
+
+    try {
+      await file.writeAsString('not-a-valid-backup', flush: true);
+
+      final result = await service.restoreFromFile(
+        file: file,
+        passphrase: 'any-passphrase',
+        addRecord: (_) async {},
+      );
+
+      expect(result.isSuccess, isFalse);
+      expect(result.failure, BackupRestoreFailure.corruptFile);
+    } finally {
+      await tempDir.delete(recursive: true);
+    }
   });
 }
 

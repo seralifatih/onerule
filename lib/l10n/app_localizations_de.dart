@@ -418,6 +418,88 @@ class AppLocalizationsDe extends AppLocalizations {
   String get backupPassphraseEmpty => 'Passwort darf nicht leer sein.';
 
   @override
+  String get backupWizardTitle => 'Backup erstellen';
+
+  @override
+  String backupWizardProgress(int current, int total) {
+    return 'Schritt $current von $total';
+  }
+
+  @override
+  String get backupWizardStep1Title => 'Schritt 1: Backup erstellen';
+
+  @override
+  String get backupWizardStep1Body =>
+      'Deine Backup-Datei ist verschlüsselt (.enc). Sie kann nur mit deiner Backup-PIN geöffnet werden.';
+
+  @override
+  String get backupWizardCreateAction => 'Verschlüsseltes Backup erstellen';
+
+  @override
+  String get backupWizardStep2Title => 'Schritt 2: Ziel wählen';
+
+  @override
+  String get backupWizardStep2Body =>
+      'Wähle, wo die verschlüsselte Backup-Datei gespeichert werden soll.';
+
+  @override
+  String get backupWizardDestinationDownloads => 'Downloads';
+
+  @override
+  String get backupWizardDestinationShare => 'Teilen';
+
+  @override
+  String get backupWizardStep3Title => 'Schritt 3: Erfolg bestätigen';
+
+  @override
+  String get backupWizardSuccessBody =>
+      'Verschlüsseltes Backup erfolgreich erstellt.';
+
+  @override
+  String backupWizardFilename(Object fileName) {
+    return 'Dateiname: $fileName';
+  }
+
+  @override
+  String get backupWizardBackAction => 'Zurück';
+
+  @override
+  String get backupWizardDoneAction => 'Fertig';
+
+  @override
+  String get restoreSectionTitle => 'Aus Backup wiederherstellen';
+
+  @override
+  String get restoreSectionDescription =>
+      'Wähle eine verschlüsselte Backup-Datei und gib die Backup-PIN ein.';
+
+  @override
+  String get restorePickFileCta => 'Backup-Datei auswählen';
+
+  @override
+  String get restoreNoFileChosen => 'Keine Datei ausgewählt';
+
+  @override
+  String restoreSelectedFile(Object fileName) {
+    return 'Ausgewählte Datei: $fileName';
+  }
+
+  @override
+  String get restoreSelectFileFirst =>
+      'Bitte zuerst eine Backup-Datei auswählen.';
+
+  @override
+  String get restoreWrongPin => 'Falsche Backup-PIN. Bitte erneut versuchen.';
+
+  @override
+  String get restoreCorruptFile =>
+      'Diese Backup-Datei ist beschädigt oder nicht unterstützt.';
+
+  @override
+  String get restoreUnknownError =>
+      'Wiederherstellung fehlgeschlagen. Bitte erneut versuchen.';
+
+  @override
   String get legacyImportWarningTitle => 'Legacy-JSON-Import';
 
   @override

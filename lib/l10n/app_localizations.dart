@@ -850,6 +850,144 @@ abstract class AppLocalizations {
   /// **'Password cannot be empty.'**
   String get backupPassphraseEmpty;
 
+  /// No description provided for @backupWizardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Backup'**
+  String get backupWizardTitle;
+
+  /// No description provided for @backupWizardProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String backupWizardProgress(int current, int total);
+
+  /// No description provided for @backupWizardStep1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 1: Create backup'**
+  String get backupWizardStep1Title;
+
+  /// No description provided for @backupWizardStep1Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your backup file is encrypted (.enc). It can only be opened with your backup PIN.'**
+  String get backupWizardStep1Body;
+
+  /// No description provided for @backupWizardCreateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create encrypted backup'**
+  String get backupWizardCreateAction;
+
+  /// No description provided for @backupWizardStep2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 2: Choose destination'**
+  String get backupWizardStep2Title;
+
+  /// No description provided for @backupWizardStep2Body.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose where to save your encrypted backup file.'**
+  String get backupWizardStep2Body;
+
+  /// No description provided for @backupWizardDestinationDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get backupWizardDestinationDownloads;
+
+  /// No description provided for @backupWizardDestinationShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get backupWizardDestinationShare;
+
+  /// No description provided for @backupWizardStep3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 3: Confirm success'**
+  String get backupWizardStep3Title;
+
+  /// No description provided for @backupWizardSuccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted backup created successfully.'**
+  String get backupWizardSuccessBody;
+
+  /// No description provided for @backupWizardFilename.
+  ///
+  /// In en, this message translates to:
+  /// **'Filename: {fileName}'**
+  String backupWizardFilename(Object fileName);
+
+  /// No description provided for @backupWizardBackAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get backupWizardBackAction;
+
+  /// No description provided for @backupWizardDoneAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get backupWizardDoneAction;
+
+  /// No description provided for @restoreSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from backup'**
+  String get restoreSectionTitle;
+
+  /// No description provided for @restoreSectionDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick an encrypted backup file and enter its backup PIN to restore.'**
+  String get restoreSectionDescription;
+
+  /// No description provided for @restorePickFileCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose backup file'**
+  String get restorePickFileCta;
+
+  /// No description provided for @restoreNoFileChosen.
+  ///
+  /// In en, this message translates to:
+  /// **'No file selected'**
+  String get restoreNoFileChosen;
+
+  /// No description provided for @restoreSelectedFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected file: {fileName}'**
+  String restoreSelectedFile(Object fileName);
+
+  /// No description provided for @restoreSelectFileFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a backup file first.'**
+  String get restoreSelectFileFirst;
+
+  /// No description provided for @restoreWrongPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong backup PIN. Try again.'**
+  String get restoreWrongPin;
+
+  /// No description provided for @restoreCorruptFile.
+  ///
+  /// In en, this message translates to:
+  /// **'This backup file is corrupt or unsupported.'**
+  String get restoreCorruptFile;
+
+  /// No description provided for @restoreUnknownError.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore failed. Please try again.'**
+  String get restoreUnknownError;
+
   /// No description provided for @legacyImportWarningTitle.
   ///
   /// In en, this message translates to:

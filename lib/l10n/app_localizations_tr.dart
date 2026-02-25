@@ -411,6 +411,86 @@ class AppLocalizationsTr extends AppLocalizations {
   String get backupPassphraseEmpty => 'Parola boş olamaz.';
 
   @override
+  String get backupWizardTitle => 'Yedek oluştur';
+
+  @override
+  String backupWizardProgress(int current, int total) {
+    return 'Adım $current / $total';
+  }
+
+  @override
+  String get backupWizardStep1Title => 'Adım 1: Yedek oluştur';
+
+  @override
+  String get backupWizardStep1Body =>
+      'Yedek dosyanız şifrelenir (.enc). Sadece yedek PIN\'iniz ile açılabilir.';
+
+  @override
+  String get backupWizardCreateAction => 'Şifreli yedek oluştur';
+
+  @override
+  String get backupWizardStep2Title => 'Adım 2: Hedef seçin';
+
+  @override
+  String get backupWizardStep2Body =>
+      'Şifreli yedek dosyasını nereye kaydedeceğinizi seçin.';
+
+  @override
+  String get backupWizardDestinationDownloads => 'İndirilenler';
+
+  @override
+  String get backupWizardDestinationShare => 'Paylaş';
+
+  @override
+  String get backupWizardStep3Title => 'Adım 3: Başarıyı onayla';
+
+  @override
+  String get backupWizardSuccessBody => 'Şifreli yedek başarıyla oluşturuldu.';
+
+  @override
+  String backupWizardFilename(Object fileName) {
+    return 'Dosya adı: $fileName';
+  }
+
+  @override
+  String get backupWizardBackAction => 'Geri';
+
+  @override
+  String get backupWizardDoneAction => 'Bitti';
+
+  @override
+  String get restoreSectionTitle => 'Yedekten geri yükle';
+
+  @override
+  String get restoreSectionDescription =>
+      'Şifreli bir yedek dosyası seçin ve geri yüklemek için yedek PIN\'inizi girin.';
+
+  @override
+  String get restorePickFileCta => 'Yedek dosyası seç';
+
+  @override
+  String get restoreNoFileChosen => 'Dosya seçilmedi';
+
+  @override
+  String restoreSelectedFile(Object fileName) {
+    return 'Seçilen dosya: $fileName';
+  }
+
+  @override
+  String get restoreSelectFileFirst => 'Önce bir yedek dosyası seçin.';
+
+  @override
+  String get restoreWrongPin => 'Yedek PIN hatalı. Tekrar deneyin.';
+
+  @override
+  String get restoreCorruptFile =>
+      'Bu yedek dosyası bozuk veya desteklenmiyor.';
+
+  @override
+  String get restoreUnknownError =>
+      'Geri yükleme başarısız. Lütfen tekrar deneyin.';
+
+  @override
   String get legacyImportWarningTitle => 'Eski JSON içe aktarma';
 
   @override

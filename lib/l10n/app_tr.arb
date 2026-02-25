@@ -150,6 +150,49 @@
     "backupPassphraseConfirmHint": "Yedek parolasını tekrar girin",
     "backupPassphraseMismatch": "Parolalar eşleşmiyor.",
     "backupPassphraseEmpty": "Parola boş olamaz.",
+    "backupWizardTitle": "Yedek oluştur",
+    "backupWizardProgress": "Adım {current} / {total}",
+    "@backupWizardProgress": {
+        "placeholders": {
+            "current": {
+                "type": "int"
+            },
+            "total": {
+                "type": "int"
+            }
+        }
+    },
+    "backupWizardStep1Title": "Adım 1: Yedek oluştur",
+    "backupWizardStep1Body": "Yedek dosyanız şifrelenir (.enc). Sadece yedek PIN'iniz ile açılabilir.",
+    "backupWizardCreateAction": "Şifreli yedek oluştur",
+    "backupWizardStep2Title": "Adım 2: Hedef seçin",
+    "backupWizardStep2Body": "Şifreli yedek dosyasını nereye kaydedeceğinizi seçin.",
+    "backupWizardDestinationDownloads": "İndirilenler",
+    "backupWizardDestinationShare": "Paylaş",
+    "backupWizardStep3Title": "Adım 3: Başarıyı onayla",
+    "backupWizardSuccessBody": "Şifreli yedek başarıyla oluşturuldu.",
+    "backupWizardFilename": "Dosya adı: {fileName}",
+    "@backupWizardFilename": {
+        "placeholders": {
+            "fileName": {}
+        }
+    },
+    "backupWizardBackAction": "Geri",
+    "backupWizardDoneAction": "Bitti",
+    "restoreSectionTitle": "Yedekten geri yükle",
+    "restoreSectionDescription": "Şifreli bir yedek dosyası seçin ve geri yüklemek için yedek PIN'inizi girin.",
+    "restorePickFileCta": "Yedek dosyası seç",
+    "restoreNoFileChosen": "Dosya seçilmedi",
+    "restoreSelectedFile": "Seçilen dosya: {fileName}",
+    "@restoreSelectedFile": {
+        "placeholders": {
+            "fileName": {}
+        }
+    },
+    "restoreSelectFileFirst": "Önce bir yedek dosyası seçin.",
+    "restoreWrongPin": "Yedek PIN hatalı. Tekrar deneyin.",
+    "restoreCorruptFile": "Bu yedek dosyası bozuk veya desteklenmiyor.",
+    "restoreUnknownError": "Geri yükleme başarısız. Lütfen tekrar deneyin.",
     "legacyImportWarningTitle": "Eski JSON içe aktarma",
     "legacyImportWarningBody": "Bu JSON yedeği şifrelenmemiştir. İçe aktarma sırasında şifreleriniz diğer uygulamalara veya servislerine açılabilir. Yalnızca dosyaya ve ortama güveniyorsanız devam edin.",
     "legacyImportConfirm": "Yine de içe aktar",

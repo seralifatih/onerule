@@ -1,14 +1,53 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+
 import 'package:cryptography/cryptography.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:offline_pass_manager/l10n/app_localizations.dart';
-import '../services/secure_storage_service.dart';
+
+import 'backup_reminder_service.dart';
+import 'secure_storage_service.dart';
+
+enum BackupRestoreFailure {
+  wrongPin,
+  corruptFile,
+  unknown,
+}
+
+class BackupPreparation {
+  const BackupPreparation({
+    required this.fileName,
+    required this.encryptedPayload,
+  });
+
+  final String fileName;
+  final String encryptedPayload;
+}
+
+class BackupExportResult {
+  const BackupExportResult({
+    required this.fileName,
+    required this.filePath,
+  });
+
+  final String fileName;
+  final String filePath;
+}
+
+class BackupRestoreResult {
+  const BackupRestoreResult.success(this.importedCount) : failure = null;
+
+  const BackupRestoreResult.failure(this.failure) : importedCount = 0;
+
+  final int importedCount;
+  final BackupRestoreFailure? failure;
+
+  bool get isSuccess => failure == null;
+}
 
 class BackupService {
   BackupService({SecureStorageService? storage})
@@ -28,148 +67,170 @@ class BackupService {
     paddingAlgorithm: PaddingAlgorithm.pkcs7,
   );
 
-  Future<void> exportPasswords(
-    BuildContext context,
-    List<Map<String, dynamic>> records,
-  ) async {
-    final loc = AppLocalizations.of(context)!;
-    try {
-      if (records.isEmpty) {
-        _showSnack(context, loc.noPasswordsToExport);
-        return;
-      }
-
-      String? passphrase = await _askForExportPassphrase(
-        context,
-        title: loc.backupPassphraseTitle,
-        hint: loc.backupPassphraseHint,
-        confirmHint: loc.backupPassphraseConfirmHint,
-      );
-      if (passphrase == null || passphrase.isEmpty) {
-        return;
-      }
-
-      final exportString = await createEncryptedBackup(
-        records: records,
-        passphrase: passphrase,
-      );
-
-      final dateStr = DateFormat('yyyy-MM-dd_HH-mm').format(DateTime.now());
-      final fileName = 'onerule_backup_$dateStr.onerule';
-
-      if (Platform.isAndroid || Platform.isIOS) {
-        final directory = await getTemporaryDirectory();
-        final file = File('${directory.path}/$fileName');
-        await file.writeAsString(exportString);
-        await Share.shareXFiles([XFile(file.path)], text: loc.backupShareText);
-      } else {
-        final outputFile = await FilePicker.platform.saveFile(
-          dialogTitle: loc.saveBackupFileTitle,
-          fileName: fileName,
-          type: FileType.custom,
-          allowedExtensions: ['onerule'],
-        );
-
-        if (outputFile != null) {
-          final file = File(outputFile);
-          await file.writeAsString(exportString);
-          if (!context.mounted) return;
-          _showSnack(context, loc.backupSavedToDevice);
-        }
-      }
-
-      await _storage.setLastBackupAt(DateTime.now());
-      passphrase = '';
-    } catch (e) {
-      if (!context.mounted) return;
-      _showSnack(context, loc.exportFailed(e.toString()));
-    }
+  String buildAutoBackupFileName({DateTime? now}) {
+    final timestamp = now ?? DateTime.now();
+    final dateStr = DateFormat('yyyy_MM_dd').format(timestamp);
+    return 'OneRule_backup_$dateStr.enc';
   }
 
-  Future<void> importPasswords(
-    BuildContext context, {
+  Future<BackupPreparation> prepareEncryptedBackup({
+    required List<Map<String, dynamic>> records,
+    required String passphrase,
+    DateTime? now,
+  }) async {
+    if (records.isEmpty) {
+      throw const BackupExportException('No passwords to export.');
+    }
+    if (passphrase.trim().isEmpty) {
+      throw const BackupExportException('Backup passphrase cannot be empty.');
+    }
+
+    final payload = await createEncryptedBackup(
+      records: records,
+      passphrase: passphrase,
+    );
+
+    return BackupPreparation(
+      fileName: buildAutoBackupFileName(now: now),
+      encryptedPayload: payload,
+    );
+  }
+
+  Future<BackupExportResult?> savePreparedBackupToDownloads({
+    required BackupPreparation preparation,
+  }) async {
+    final directTarget = await _resolveDownloadsDirectoryFile(
+      preparation.fileName,
+    );
+    if (directTarget != null) {
+      final savedFile = await _writeEncryptedFile(
+        directTarget,
+        preparation.encryptedPayload,
+      );
+      if (savedFile != null) {
+        await _markBackupCreated(DateTime.now());
+        return BackupExportResult(
+          fileName: savedFile.uri.pathSegments.last,
+          filePath: savedFile.path,
+        );
+      }
+    }
+
+    final pickerTarget = await _pickSaveTarget(preparation.fileName);
+    if (pickerTarget == null) {
+      return null;
+    }
+
+    final savedFile = await _writeEncryptedFile(
+      pickerTarget,
+      preparation.encryptedPayload,
+    );
+    if (savedFile == null) {
+      throw const BackupExportException('Unable to write backup file.');
+    }
+
+    await _markBackupCreated(DateTime.now());
+
+    return BackupExportResult(
+      fileName: savedFile.uri.pathSegments.last,
+      filePath: savedFile.path,
+    );
+  }
+
+  Future<BackupExportResult> sharePreparedBackup({
+    required BackupPreparation preparation,
+    required String shareText,
+  }) async {
+    final directory = await getTemporaryDirectory();
+    final file = File(_joinPath(directory.path, preparation.fileName));
+
+    await file.writeAsString(preparation.encryptedPayload, flush: true);
+    await Share.shareXFiles([XFile(file.path)], text: shareText);
+
+    await _markBackupCreated(DateTime.now());
+
+    return BackupExportResult(
+      fileName: preparation.fileName,
+      filePath: file.path,
+    );
+  }
+
+  Future<File?> pickBackupFileForRestore() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['enc', 'onerule'],
+    );
+
+    if (result == null || result.files.isEmpty) {
+      return null;
+    }
+
+    final path = result.files.single.path;
+    if (path == null || path.isEmpty) {
+      return null;
+    }
+
+    return File(path);
+  }
+
+  Future<BackupRestoreResult> restoreFromFile({
+    required File file,
+    required String passphrase,
     required Future<void> Function(Map<String, dynamic> record) addRecord,
   }) async {
-    final loc = AppLocalizations.of(context)!;
+    final extension = _extensionOf(file.path);
+
+    if (extension == 'json') {
+      try {
+        final count = await _importLegacyJson(file, addRecord: addRecord);
+        return BackupRestoreResult.success(count);
+      } catch (_) {
+        return const BackupRestoreResult.failure(
+          BackupRestoreFailure.corruptFile,
+        );
+      }
+    }
+
+    if (passphrase.trim().isEmpty) {
+      return const BackupRestoreResult.failure(BackupRestoreFailure.wrongPin);
+    }
+
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['onerule', 'json'],
-      );
-
-      if (result == null) {
-        return;
-      }
-
-      final file = File(result.files.single.path!);
-      final extension = result.files.single.extension ?? '';
-
-      if (extension.toLowerCase() == 'json') {
-        if (!context.mounted) return;
-        final ok = await _confirmLegacyJsonImport(context);
-        if (!ok || !context.mounted) {
-          return;
-        }
-        await _importLegacyJson(context, file, addRecord: addRecord);
-        return;
-      }
-
       final encryptedString = await file.readAsString();
-      if (!context.mounted) return;
-      String? passphrase = await _askForPassphrase(
-        context,
-        title: loc.backupPassphraseTitle,
-        hint: loc.backupPassphraseHint,
-      );
-      if (passphrase == null || passphrase.isEmpty) {
-        return;
-      }
-
-      final decryptedRecords = await decryptEncryptedBackup(
+      final decryptedRecords = await decryptEncryptedBackupStrict(
         encryptedPayload: encryptedString,
         passphrase: passphrase,
       );
-      passphrase = '';
-
-      if (decryptedRecords == null) {
-        if (!context.mounted) return;
-        _showSnack(context, loc.importFailedInvalidOrPassword);
-        return;
-      }
-
       final count =
           await _importRecords(decryptedRecords, addRecord: addRecord);
-      await _storage.setLastBackupAt(DateTime.now());
-      if (!context.mounted) return;
-      _showSnack(context, loc.passwordsImported(count));
+      return BackupRestoreResult.success(count);
+    } on BackupCipherException catch (e) {
+      if (_isAuthenticationFailure(e)) {
+        return const BackupRestoreResult.failure(BackupRestoreFailure.wrongPin);
+      }
+      return const BackupRestoreResult.failure(
+          BackupRestoreFailure.corruptFile);
+    } on FormatException {
+      return const BackupRestoreResult.failure(
+          BackupRestoreFailure.corruptFile);
     } catch (_) {
-      if (!context.mounted) return;
-      _showSnack(context, loc.importFailed);
+      return const BackupRestoreResult.failure(BackupRestoreFailure.unknown);
     }
   }
 
-  Future<void> _importLegacyJson(
-    BuildContext context,
+  Future<int> _importLegacyJson(
     File file, {
     required Future<void> Function(Map<String, dynamic> record) addRecord,
   }) async {
-    final loc = AppLocalizations.of(context)!;
-    try {
-      final jsonString = await file.readAsString();
-      final parsed = jsonDecode(jsonString);
-      if (parsed is! List<dynamic>) {
-        throw const FormatException('Legacy JSON backup must be a list.');
-      }
-
-      final count = await _importRecords(parsed, addRecord: addRecord);
-      await _storage.setLegacyJsonImportCompleted();
-      await _storage.setLastBackupAt(DateTime.now());
-      if (!context.mounted) return;
-      _showSnack(context, loc.passwordsImported(count));
-    } catch (_) {
-      if (!context.mounted) return;
-      _showSnack(context, loc.importFailed);
+    final jsonString = await file.readAsString();
+    final parsed = jsonDecode(jsonString);
+    if (parsed is! List<dynamic>) {
+      throw const FormatException('Legacy JSON backup must be a list.');
     }
+
+    final count = await _importRecords(parsed, addRecord: addRecord);
+    await _storage.setLegacyJsonImportCompleted();
+    return count;
   }
 
   Future<int> _importRecords(
@@ -186,139 +247,70 @@ class BackupService {
     return count;
   }
 
-  Future<bool> _confirmLegacyJsonImport(BuildContext context) async {
-    final loc = AppLocalizations.of(context)!;
-    if (await _storage.hasCompletedLegacyJsonImport()) {
-      return true;
+  Future<void> _markBackupCreated(DateTime backupAt) async {
+    await _storage.setLastBackupAt(backupAt);
+    try {
+      await BackupReminderService.instance.onBackupCreated(backupAt);
+    } catch (_) {
+      // Notification scheduling is best effort.
     }
-    if (!context.mounted) return false;
+  }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(loc.legacyImportWarningTitle),
-        content: Text(loc.legacyImportWarningBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(loc.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(loc.legacyImportConfirm),
-          ),
-        ],
-      ),
+  Future<File?> _resolveDownloadsDirectoryFile(String fileName) async {
+    final downloadsDirectory = await getDownloadsDirectory();
+    if (downloadsDirectory == null) {
+      return null;
+    }
+    return File(_joinPath(downloadsDirectory.path, fileName));
+  }
+
+  Future<File?> _pickSaveTarget(String fileName) async {
+    final outputFile = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save encrypted backup',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: ['enc'],
     );
 
-    return confirmed == true;
+    if (outputFile == null || outputFile.isEmpty) {
+      return null;
+    }
+
+    final normalized = outputFile.toLowerCase().endsWith('.enc')
+        ? outputFile
+        : '$outputFile.enc';
+
+    return File(normalized);
   }
 
-  Future<String?> _askForPassphrase(
-    BuildContext context, {
-    required String title,
-    required String hint,
-  }) async {
-    final controller = TextEditingController();
-    final loc = AppLocalizations.of(context)!;
-
+  Future<File?> _writeEncryptedFile(File file, String encryptedPayload) async {
     try {
-      return showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: controller,
-            obscureText: true,
-            decoration: InputDecoration(hintText: hint),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(loc.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, controller.text),
-              child: Text(loc.confirm),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      controller.text = '';
-      controller.dispose();
+      await file.parent.create(recursive: true);
+      await file.writeAsString(encryptedPayload, flush: true);
+      return file;
+    } catch (_) {
+      return null;
     }
   }
 
-  Future<String?> _askForExportPassphrase(
-    BuildContext context, {
-    required String title,
-    required String hint,
-    required String confirmHint,
-  }) async {
-    final loc = AppLocalizations.of(context)!;
-    final controller = TextEditingController();
-    final confirmController = TextEditingController();
-    String? errorText;
-
-    Future<String?> result;
-    try {
-      result = showDialog<String>(
-        context: context,
-        builder: (context) => StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            title: Text(title),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: controller,
-                  obscureText: true,
-                  decoration: InputDecoration(hintText: hint),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: confirmController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: confirmHint,
-                    errorText: errorText,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(loc.cancel),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final first = controller.text;
-                  final second = confirmController.text;
-                  if (first.isEmpty || second.isEmpty) {
-                    setState(() => errorText = loc.backupPassphraseEmpty);
-                    return;
-                  }
-                  if (first != second) {
-                    setState(() => errorText = loc.backupPassphraseMismatch);
-                    return;
-                  }
-                  Navigator.pop(context, first);
-                },
-                child: Text(loc.confirm),
-              ),
-            ],
-          ),
-        ),
-      );
-      return await result;
-    } finally {
-      controller.text = '';
-      confirmController.text = '';
-      controller.dispose();
-      confirmController.dispose();
+  String _extensionOf(String path) {
+    final dot = path.lastIndexOf('.');
+    if (dot < 0 || dot == path.length - 1) {
+      return '';
     }
+    return path.substring(dot + 1).toLowerCase();
+  }
+
+  String _joinPath(String base, String name) {
+    final separator = Platform.pathSeparator;
+    if (base.endsWith(separator)) {
+      return '$base$name';
+    }
+    return '$base$separator$name';
+  }
+
+  bool _isAuthenticationFailure(BackupCipherException error) {
+    return error.message.toLowerCase().contains('authentication failed');
   }
 
   Future<String> createEncryptedBackup({
@@ -606,11 +598,15 @@ class BackupService {
       },
     });
   }
+}
 
-  void _showSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
+class BackupExportException implements Exception {
+  const BackupExportException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'BackupExportException: $message';
 }
 
 class BackupCipherException implements Exception {
