@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.WindowManager
 import com.fidevelopment.onerule.autofill.AutofillSecureStore
 import com.fidevelopment.onerule.autofill.OneRuleAutofillService
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -18,7 +19,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.system.exitProcess
 
-class MainActivity: FlutterFragmentActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val autofillChannelName = "onerule/autofill_mvp"
     private val logFileName = "onerule_debug.log"
     private val maxLogBytes = 2L * 1024L * 1024L
@@ -29,7 +30,16 @@ class MainActivity: FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installNativeUncaughtExceptionLogger()
+
         super.onCreate(savedInstanceState)
+
+        // Allow screenshots/screen recording in DEBUG builds only.
+        // Keep FLAG_SECURE on in release to protect sensitive content.
+        if (BuildConfig.DEBUG) {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -167,7 +177,8 @@ class MainActivity: FlutterFragmentActivity() {
     private fun sanitize(input: String): String {
         var value = input
 
-        val secretKeyPattern = "(password|passphrase|secret|token|pin|masterPin|backupPassphrase|cipherText|ciphertext|nonce|iv|mac|tag|salt|plaintext|decrypted|entryContent|content)"
+        val secretKeyPattern =
+            "(password|passphrase|secret|token|pin|masterPin|backupPassphrase|cipherText|ciphertext|nonce|iv|mac|tag|salt|plaintext|decrypted|entryContent|content)"
 
         value = Regex(
             "$secretKeyPattern\\s*[:=]\\s*([^\\s,}\\]]+)",
@@ -204,7 +215,8 @@ class MainActivity: FlutterFragmentActivity() {
 
         value = Regex("[A-Za-z0-9+/_-]{64,}={0,2}")
             .replace(value, "[REDACTED_BLOB]")
-        value = Regex("\\b[a-fA-F0-9]{64,}\\b").replace(value, "[REDACTED_HEX]")
+        value = Regex("\\b[a-fA-F0-9]{64,}\\b")
+            .replace(value, "[REDACTED_HEX]")
 
         return value
     }

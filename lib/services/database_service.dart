@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqflite_ffi;
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../models/password_model.dart';
@@ -193,15 +195,40 @@ class DatabaseService {
       return database;
     }
 
-    return openDatabase(
-      dbPath,
-      password: password,
-      version: 1,
-      onCreate: (database, _) async {
-        await _createSchema(database);
-      },
-      onOpen: (database) async => _createSchema(database),
-    );
+    if (_shouldUseDesktopFfiDatabase) {
+      return _openDesktopDatabase(dbPath);
+    }
+
+    try {
+      return openDatabase(
+        dbPath,
+        password: password,
+        version: 1,
+        onCreate: (database, _) async {
+          await _createSchema(database);
+        },
+        onOpen: (database) async => _createSchema(database),
+      );
+    } on MissingPluginException {
+      if (kDebugMode) {
+        debugPrint(
+          '[DatabaseService] SQLCipher plugin unavailable, falling back to desktop ffi database.',
+        );
+      }
+      return _openDesktopDatabase(dbPath);
+    }
+  }
+
+  bool get _shouldUseDesktopFfiDatabase {
+    return !kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+  }
+
+  Future<Database> _openDesktopDatabase(String dbPath) async {
+    sqflite_ffi.sqfliteFfiInit();
+    final database = await sqflite_ffi.databaseFactoryFfi.openDatabase(dbPath);
+    await _createSchema(database);
+    return database;
   }
 
   Future<void> _createSchema(Database database) async {

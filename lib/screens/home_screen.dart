@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadRecentlyUsedPreferences();
   }
 
-  // â”€â”€ Backup banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Backup banner ─────────────────────────────────────────────────────────
 
   Future<void> _loadBackupStatus() async {
     final lastBackupAt = await _backupFacade.getLastBackupAt();
@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return DateTime.now().difference(_lastBackupAt!).inDays >= 30;
   }
 
-  // â”€â”€ Panic Mode onboarding banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Panic Mode onboarding banner ──────────────────────────────────────────
 
   Future<void> _loadPanicBannerStatus() async {
     final prefs = await SharedPreferences.getInstance();
@@ -90,9 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final hasPanic = await authFacade.hasPanicPin();
     if (!mounted) return;
 
-    setState(() {
-      _showPanicModeBanner = !hasPanic;
-    });
+    setState(() => _showPanicModeBanner = !hasPanic);
   }
 
   Future<void> _dismissPanicBannerPermanently() async {
@@ -140,7 +138,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _showAutofillSetupCard = false);
       return;
     }
-
     final enabled = await _credentialProvider.isEnabled();
     if (!mounted) return;
     setState(() => _showAutofillSetupCard = !enabled);
@@ -158,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -216,23 +213,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
           return Column(
             children: [
-              // â”€â”€ Panic mode active warning (decoy vault is open) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Panic mode active warning ────────────────────────────────
               if (provider.isPanicMode) _buildPanicActiveBanner(context),
 
               if (!provider.isPanicMode && _showAutofillSetupCard)
                 _buildAutofillSetupBanner(context),
 
-              // â”€â”€ Backup reminder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Backup reminder ──────────────────────────────────────────
               if (!provider.isPanicMode && _shouldShowBackupBanner)
                 _buildBackupBanner(context),
 
-              // â”€â”€ Panic Mode onboarding (only when vault has items) â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Panic Mode onboarding ────────────────────────────────────
               if (!provider.isPanicMode &&
                   _showPanicModeBanner &&
                   provider.totalPasswordsCount > 0)
                 _buildPanicOnboardingBanner(context),
 
-              // â”€â”€ Search + filter header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Search + filter header ───────────────────────────────────
               _buildHeaderSection(
                 context: context,
                 provider: provider,
@@ -240,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 visibleItemsCount: passwords.length,
               ),
 
-              // â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // ── Main content ─────────────────────────────────────────────
               Expanded(
                 child: _buildContentByState(
                   context: context,
@@ -277,10 +274,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // â”€â”€ Panic mode ACTIVE banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Panic mode ACTIVE banner ──────────────────────────────────────────────
 
   Widget _buildPanicActiveBanner(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final semanticColors = Theme.of(context).extension<AppSemanticColors>() ??
         AppTheme.fallbackSemanticColors;
@@ -298,9 +294,10 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'Privacy mode active â€” decoy vault shown',
+              'Privacy mode active — decoy vault shown',
               style: textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurface,
+                // FIX: use warning color directly for text on warning bg
+                color: semanticColors.warning,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -367,7 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // â”€â”€ Backup reminder banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Backup reminder banner ────────────────────────────────────────────────
 
   Widget _buildBackupBanner(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -390,7 +387,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Text(
               isNeverBacked
-                  ? 'No backup yet â€” export your vault in Settings'
+                  ? 'No backup yet — export your vault in Settings'
                   : 'Last backup was over 30 days ago',
               style: textTheme.labelSmall?.copyWith(
                 color: colorScheme.onPrimaryContainer,
@@ -435,17 +432,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // â”€â”€ Panic Mode onboarding banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Panic Mode onboarding banner ──────────────────────────────────────────
 
   Widget _buildPanicOnboardingBanner(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final semanticColors = Theme.of(context).extension<AppSemanticColors>() ??
         AppTheme.fallbackSemanticColors;
+    // FIX: Use warning color for text/icons — readable on both light and dark
+    // amber background without relying on onSurface which varies by theme.
+    final contentColor = semanticColors.warning;
 
     return Container(
       width: double.infinity,
-      color: semanticColors.warning.withValues(alpha: 0.2),
+      color: semanticColors.warning.withValues(alpha: 0.14),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.sm,
@@ -455,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.shield_outlined, size: 16, color: semanticColors.warning),
+          Icon(Icons.shield_outlined, size: 16, color: contentColor),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
@@ -465,14 +464,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Set up Panic PIN',
                   style: textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurface,
+                    color: contentColor,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
                   'Opens a decoy vault if someone forces you to unlock.',
                   style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface,
+                    color: contentColor.withValues(alpha: 0.8),
                     fontSize: 11,
                     height: 1.4,
                   ),
@@ -499,19 +498,16 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               'Set up',
               style: textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurface,
+                color: contentColor,
                 fontWeight: FontWeight.w700,
                 decoration: TextDecoration.underline,
-                decorationColor: colorScheme.onSurface,
+                decorationColor: contentColor,
               ),
             ),
           ),
           IconButton(
-            icon: Icon(
-              Icons.close_rounded,
-              size: 16,
-              color: colorScheme.onSurface,
-            ),
+            icon: Icon(Icons.close_rounded,
+                size: 16, color: contentColor.withValues(alpha: 0.7)),
             padding: const EdgeInsets.all(AppSpacing.xs),
             constraints: const BoxConstraints(),
             tooltip: 'Dismiss',
@@ -522,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // â”€â”€ Header: search + filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Header: search + filters ──────────────────────────────────────────────
 
   Widget _buildHeaderSection({
     required BuildContext context,
@@ -560,7 +556,7 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: InputDecoration(
               hintText: loc.searchPasswordsHint,
               hintStyle: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.72),
+                color: colorScheme.onSurface.withValues(alpha: 0.45),
               ),
               prefixIcon: Icon(Icons.search, color: colorScheme.primary),
               filled: true,
@@ -677,7 +673,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // â”€â”€ Content router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Content router ────────────────────────────────────────────────────────
 
   _HomeContentState _resolveContentState({
     required PasswordProvider provider,
@@ -722,26 +718,53 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           children: [
             if (recentPasswords.isNotEmpty) ...[
-              _buildRecentlyUsedHeader(context),
+              _buildSectionHeader(
+                context: context,
+                label: 'Recently Used',
+                trailing: TextButton.icon(
+                  onPressed: () => _setHideRecentlyUsed(!_hideRecentlyUsed),
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: Icon(
+                    _hideRecentlyUsed
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 15,
+                  ),
+                  label: Text(
+                    _hideRecentlyUsed ? 'Show' : 'Hide',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
               if (!_hideRecentlyUsed)
                 ...recentPasswords.map(
                   (item) => _buildPasswordTile(context, item, provider),
                 ),
+              // ── Divider between sections ─────────────────────────────────
+              if (passwords.isNotEmpty && !_hideRecentlyUsed)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Divider(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outlineVariant
+                        .withValues(alpha: 0.5),
+                    height: 1,
+                  ),
+                ),
             ],
             if (passwords.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                  AppSpacing.lg,
-                  AppSpacing.xs,
-                ),
-                child: Text(
-                  'All Entries',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                ),
+              _buildSectionHeader(
+                context: context,
+                label: 'All Entries',
               ),
             ...passwords
                 .map((item) => _buildPasswordTile(context, item, provider)),
@@ -750,36 +773,38 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildRecentlyUsedHeader(BuildContext context) {
+  /// Consistent section label used for "Recently Used" and "All Entries".
+  Widget _buildSectionHeader({
+    required BuildContext context,
+    required String label,
+    Widget? trailing,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.sm,
-        AppSpacing.lg,
+        AppSpacing.md,
         AppSpacing.xs,
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              'Recently Used',
-              style: textTheme.labelLarge?.copyWith(
-                color: colorScheme.onSurface,
+              label,
+              style: textTheme.labelSmall?.copyWith(
+                // FIX: use labelSmall + onSurfaceVariant for section labels
+                // instead of labelLarge + onSurface — less dominant,
+                // clearer hierarchy vs card titles.
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
               ),
             ),
           ),
-          TextButton.icon(
-            onPressed: () => _setHideRecentlyUsed(!_hideRecentlyUsed),
-            icon: Icon(
-              _hideRecentlyUsed
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined,
-              size: 16,
-            ),
-            label: Text(_hideRecentlyUsed ? 'Show' : 'Hide'),
-          ),
+          if (trailing != null) trailing,
         ],
       ),
     );
@@ -847,7 +872,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _openAddEditSheet(context, password);
   }
 
-  // â”€â”€ Password card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Password card ─────────────────────────────────────────────────────────
 
   Widget _buildPasswordTile(
     BuildContext context,
@@ -891,7 +916,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // â”€â”€ Three-dot action menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _deletePasswordWithHold({
     required BuildContext context,
     required PasswordProvider provider,
@@ -986,12 +1010,12 @@ class _HomeScreenState extends State<HomeScreen> {
       return '$localMasked@$domain';
     }
 
-    if (normalized.length <= 2) {
-      return '•' * normalized.length;
-    }
+    if (normalized.length <= 2) return '•' * normalized.length;
     return '${normalized[0]}${'•' * (normalized.length - 2)}${normalized[normalized.length - 1]}';
   }
 }
+
+// ── Vault password card ───────────────────────────────────────────────────────
 
 class _VaultPasswordCard extends StatefulWidget {
   const _VaultPasswordCard({
@@ -1072,16 +1096,19 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.sm,
       ),
-      height: 92,
+      // FIX: remove fixed height — let content determine height.
+      // Fixed 92 clips copy countdown + large text scale.
+      constraints: const BoxConstraints(minHeight: 80),
       child: Stack(
         children: [
+          // ── Background action layer ──────────────────────────────────────
           Positioned.fill(
             child: Row(
               children: [
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.18),
+                      color: colorScheme.primary.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(AppRadius.large),
                     ),
                     alignment: Alignment.centerLeft,
@@ -1089,14 +1116,11 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.copy_rounded,
-                          color: colorScheme.primary,
-                          size: 20,
-                        ),
+                        Icon(Icons.copy_rounded,
+                            color: colorScheme.primary, size: 18),
                         const SizedBox(width: AppSpacing.xs),
                         Text(
-                          'Quick copy password',
+                          'Copy password',
                           style: textTheme.labelSmall?.copyWith(
                             color: colorScheme.primary,
                             fontWeight: FontWeight.w700,
@@ -1111,7 +1135,7 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: widget.semanticColors.destructive
-                          .withValues(alpha: 0.22),
+                          .withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(AppRadius.large),
                     ),
                     padding:
@@ -1121,17 +1145,12 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
                       children: [
                         IconButton(
                           key: ValueKey<String>(
-                            'edit-action-${widget.password.id}',
-                          ),
+                              'edit-action-${widget.password.id}'),
                           tooltip: 'Edit ${widget.password.title}',
-                          icon: Icon(
-                            Icons.edit_outlined,
-                            color: colorScheme.onSurface,
-                          ),
+                          icon: Icon(Icons.edit_outlined,
+                              color: colorScheme.onSurface),
                           constraints: const BoxConstraints.tightFor(
-                            width: 48,
-                            height: 48,
-                          ),
+                              width: 48, height: 48),
                           onPressed: () {
                             _closeActions();
                             widget.onEdit();
@@ -1150,13 +1169,12 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
                             },
                             child: Container(
                               key: ValueKey<String>(
-                                'delete-action-${widget.password.id}',
-                              ),
+                                  'delete-action-${widget.password.id}'),
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
                                 color: widget.semanticColors.destructive
-                                    .withValues(alpha: 0.2),
+                                    .withValues(alpha: 0.18),
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.medium),
                               ),
@@ -1174,6 +1192,8 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
               ],
             ),
           ),
+
+          // ── Draggable card ───────────────────────────────────────────────
           AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOut,
@@ -1193,14 +1213,14 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
                 label:
                     '${widget.password.title}, masked username ${widget.maskedUsername}',
                 hint:
-                    'Swipe right to copy password. Swipe left to reveal edit and delete actions.',
+                    'Swipe right to copy password. Swipe left to reveal edit and delete.',
                 child: Container(
                   decoration: BoxDecoration(
                     color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(AppRadius.large),
                     boxShadow: [
                       BoxShadow(
-                        color: colorScheme.shadow.withValues(alpha: 0.12),
+                        color: colorScheme.shadow.withValues(alpha: 0.10),
                         blurRadius: AppSpacing.md,
                         offset: const Offset(0, 2),
                       ),
@@ -1212,24 +1232,27 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
                   ),
                   child: Row(
                     children: [
+                      // Category icon
                       Container(
                         padding: const EdgeInsets.all(AppSpacing.sm + 2),
                         decoration: BoxDecoration(
                           color: colorScheme.primaryContainer
-                              .withValues(alpha: 0.8),
+                              .withValues(alpha: 0.7),
                           borderRadius: BorderRadius.circular(AppRadius.medium),
                         ),
                         child: Icon(
                           PasswordCategories.iconFor(widget.password.category),
                           color: colorScheme.primary,
-                          size: 22,
+                          size: 20,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.md),
+
+                      // Title + username + copy feedback
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               widget.password.title,
@@ -1244,8 +1267,10 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
                               widget.maskedUsername,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                              // FIX: onSurfaceVariant for username — visually
+                              // subdued vs title, clearer hierarchy.
                               style: textTheme.usernameMasked?.copyWith(
-                                color: colorScheme.onSurface,
+                                color: colorScheme.onSurfaceVariant,
                               ),
                             ),
                             if (hasCopyFeedback) ...[
@@ -1262,7 +1287,7 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
                                 ),
                                 child: Text(
                                   countdown > 0
-                                      ? 'Copied • Clears in ${countdown}s'
+                                      ? 'Copied · clears in ${countdown}s'
                                       : 'Copied',
                                   style: textTheme.metadata?.copyWith(
                                     color: colorScheme.onSecondaryContainer,
@@ -1273,21 +1298,22 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
                           ],
                         ),
                       ),
+
+                      // Action buttons
+                      // FIX: subtler styling — ghost buttons instead of
+                      // filled primaryContainer, which competed with the card.
                       _CopyActionButton(
                         key: ValueKey<String>(
-                          'copy-username-${widget.password.id}',
-                        ),
+                            'copy-username-${widget.password.id}'),
                         icon: Icons.alternate_email_rounded,
                         semanticLabel:
                             'Copy username for ${widget.password.title}',
                         tooltip: 'Copy username',
                         onPressed: widget.onCopyUsername,
                       ),
-                      const SizedBox(width: AppSpacing.xs),
                       _CopyActionButton(
                         key: ValueKey<String>(
-                          'copy-password-${widget.password.id}',
-                        ),
+                            'copy-password-${widget.password.id}'),
                         icon: Icons.copy_rounded,
                         semanticLabel:
                             'Copy password for ${widget.password.title}',
@@ -1305,6 +1331,8 @@ class _VaultPasswordCardState extends State<_VaultPasswordCard> {
     );
   }
 }
+
+// ── Copy action button ────────────────────────────────────────────────────────
 
 class _CopyActionButton extends StatelessWidget {
   const _CopyActionButton({
@@ -1329,18 +1357,20 @@ class _CopyActionButton extends StatelessWidget {
       child: IconButton(
         tooltip: tooltip,
         onPressed: onPressed,
-        constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+        constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+        // FIX: ghost style — transparent bg, primary foreground.
+        // Previous filled primaryContainer at 0.9 alpha was too dominant.
         style: IconButton.styleFrom(
-          backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.9),
+          backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.35),
           foregroundColor: colorScheme.primary,
         ),
-        icon: Icon(icon, size: 19),
+        icon: Icon(icon, size: 18),
       ),
     );
   }
 }
 
-// â”€â”€ Supporting state widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Supporting state widgets ──────────────────────────────────────────────────
 
 class LoadingState extends StatelessWidget {
   const LoadingState({super.key});
@@ -1358,9 +1388,8 @@ class LoadingState extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             'Loading vault...',
-            style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+            style: textTheme.bodyMedium
+                ?.copyWith(color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -1448,22 +1477,24 @@ class EmptyVaultState extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xl + AppSpacing.lg),
+                    // FIX: updated hint to match actual swipe behavior
+                    // (swipe left reveals actions, not direct delete)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.swipe_left_rounded,
+                          Icons.swipe_rounded,
                           size: 13,
                           color: colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.75),
+                              .withValues(alpha: 0.5),
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         Text(
-                          'Swipe left on any item to delete',
+                          'Swipe cards to copy or reveal actions',
                           style: textTheme.bodySmall?.copyWith(
                             fontSize: 11,
                             color: colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.75),
+                                .withValues(alpha: 0.5),
                           ),
                         ),
                       ],
@@ -1503,17 +1534,15 @@ class NoResultsState extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             Text(
               'No results',
-              style: textTheme.titleLarge?.copyWith(
-                color: colorScheme.onSurface,
-              ),
+              style:
+                  textTheme.titleLarge?.copyWith(color: colorScheme.onSurface),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Try a different search or reset your filters.',
               textAlign: TextAlign.center,
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: textTheme.bodyMedium
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: AppSpacing.md),
             TextButton(

@@ -154,15 +154,24 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
         : DateFormat('yyyy-MM-dd HH:mm').format(_lastBackupAt!);
 
     return Scaffold(
-      appBar: AppBar(title: Text(loc.backupRestoreTitle)),
+      appBar: AppBar(
+        leading: Icon(Icons.backup_rounded, color: colorScheme.onSurface),
+        title: Text(loc.backupRestoreTitle),
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          AppSpacing.lg,
+        ),
         children: [
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(AppRadius.large),
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,9 +207,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
             decoration: BoxDecoration(
               color: colorScheme.surface,
               borderRadius: BorderRadius.circular(AppRadius.large),
-              border: Border.all(
-                color: colorScheme.outlineVariant,
-              ),
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,7 +303,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
             loc.backupGuideTitle,
             style: textTheme.titleSmall?.copyWith(
               color: colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),

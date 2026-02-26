@@ -14,6 +14,7 @@ class SecuritySettingsProvider extends ChangeNotifier {
   static const bool defaultApplyClipboardPolicyToUsername = false;
   static const bool defaultShareCrashReportsEnabled = false;
   static const bool defaultBackupReminderEnabled = true;
+  static const Set<int> _allowedAutoLockTimeouts = <int>{30, 60, 120, 300};
 
   int _autoLockTimeoutSeconds = defaultAutoLockTimeoutSeconds;
   int get autoLockTimeoutSeconds => _autoLockTimeoutSeconds;
@@ -32,8 +33,8 @@ class SecuritySettingsProvider extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    _autoLockTimeoutSeconds =
-        prefs.getInt(_autoLockTimeoutKey) ?? defaultAutoLockTimeoutSeconds;
+    final storedAutoLock = prefs.getInt(_autoLockTimeoutKey);
+    _autoLockTimeoutSeconds = _sanitizeAutoLockTimeout(storedAutoLock);
     _clipboardAutoClearSeconds = prefs.getInt(_clipboardAutoClearSecondsKey) ??
         defaultClipboardAutoClearSeconds;
     _applyClipboardPolicyToUsername =
@@ -47,6 +48,7 @@ class SecuritySettingsProvider extends ChangeNotifier {
   }
 
   Future<void> setAutoLockTimeoutSeconds(int seconds) async {
+    seconds = _sanitizeAutoLockTimeout(seconds);
     if (_autoLockTimeoutSeconds == seconds) return;
     _autoLockTimeoutSeconds = seconds;
     notifyListeners();
@@ -89,5 +91,12 @@ class SecuritySettingsProvider extends ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_backupReminderEnabledKey, enabled);
+  }
+
+  int _sanitizeAutoLockTimeout(int? rawSeconds) {
+    if (rawSeconds == null || !_allowedAutoLockTimeouts.contains(rawSeconds)) {
+      return defaultAutoLockTimeoutSeconds;
+    }
+    return rawSeconds;
   }
 }

@@ -67,6 +67,8 @@ class SecureStorageService {
     _sessionKey = null;
   }
 
+  bool get hasSessionKey => _sessionKey != null;
+
   // --- Biyometrik Ayarlar ---
   Future<void> setBiometricEnabled(bool enabled) async {
     await _secureStorage.write(

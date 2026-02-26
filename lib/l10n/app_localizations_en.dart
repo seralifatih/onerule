@@ -581,4 +581,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get usePinToFinishUnlocking => 'Use PIN to finish unlocking.';
+
+  @override
+  String get openLinkFailed => 'Could not open link';
+
+  @override
+  String get vaultHealthTitle => 'Vault Health';
+
+  @override
+  String get vaultHealthSubtitle =>
+      'Weak, duplicate, and stale password checks.';
+
+  @override
+  String get autofillTitle => 'Autofill';
+
+  @override
+  String get autofillEnabledSubtitle => 'Enabled for OneRule';
+
+  @override
+  String get autofillDisabledSubtitle => 'Not enabled. Tap to set up.';
+
+  @override
+  String get backupReminderTitle => 'Backup reminder';
+
+  @override
+  String get backupReminderSubtitle =>
+      'Monthly reminder when your last backup is older than 30 days.';
+
+  @override
+  String get supportDevelopmentTitle => 'Support Development';
+
+  @override
+  String get buyMeCoffeeTitle => 'Buy me a coffee';
+
+  @override
+  String get supportDevelopmentBody =>
+      'Built by one developer. Your support helps keep OneRule offline and maintained.';
 }

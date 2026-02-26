@@ -1155,6 +1155,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use PIN to finish unlocking.'**
   String get usePinToFinishUnlocking;
+
+  /// No description provided for @openLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open link'**
+  String get openLinkFailed;
+
+  /// No description provided for @vaultHealthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault Health'**
+  String get vaultHealthTitle;
+
+  /// No description provided for @vaultHealthSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Weak, duplicate, and stale password checks.'**
+  String get vaultHealthSubtitle;
+
+  /// No description provided for @autofillTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Autofill'**
+  String get autofillTitle;
+
+  /// No description provided for @autofillEnabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled for OneRule'**
+  String get autofillEnabledSubtitle;
+
+  /// No description provided for @autofillDisabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enabled. Tap to set up.'**
+  String get autofillDisabledSubtitle;
+
+  /// No description provided for @backupReminderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup reminder'**
+  String get backupReminderTitle;
+
+  /// No description provided for @backupReminderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly reminder when your last backup is older than 30 days.'**
+  String get backupReminderSubtitle;
+
+  /// No description provided for @supportDevelopmentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Support Development'**
+  String get supportDevelopmentTitle;
+
+  /// No description provided for @buyMeCoffeeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy me a coffee'**
+  String get buyMeCoffeeTitle;
+
+  /// No description provided for @supportDevelopmentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Built by one developer. Your support helps keep OneRule offline and maintained.'**
+  String get supportDevelopmentBody;
 }
 
 class _AppLocalizationsDelegate

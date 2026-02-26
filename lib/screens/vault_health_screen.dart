@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import '../models/password_model.dart';
 import '../providers/password_provider.dart';
 import '../services/vault_health_service.dart';
+import '../theme/app_elevation.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_theme.dart';
 
 class VaultHealthScreen extends StatefulWidget {
   const VaultHealthScreen({super.key});
@@ -23,20 +25,41 @@ class _VaultHealthScreenState extends State<VaultHealthScreen> {
   Widget build(BuildContext context) {
     final entries = context.watch<PasswordProvider>().passwords;
     _ensureFuture(entries);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Vault Health')),
+      appBar: AppBar(
+        leading: Icon(
+          Icons.health_and_safety_outlined,
+          color: colorScheme.onSurface,
+        ),
+        title: const Text('Vault Health'),
+      ),
       body: FutureBuilder<VaultHealthReport>(
         future: _reportFuture,
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return _buildMessageState(
+              context,
+              icon: Icons.error_outline_rounded,
+              title: 'Unable to analyze vault',
+              body: 'Try again after reopening this screen.',
+            );
+          }
+
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildLoadingState(context);
           }
 
           final report = snapshot.data!;
           final buckets = report.buckets;
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
             children: [
               _buildScoreCard(context, report),
               const SizedBox(height: AppSpacing.lg),
@@ -49,10 +72,13 @@ class _VaultHealthScreenState extends State<VaultHealthScreen> {
                 ),
               ),
               if (report.totalEntries == 0)
-                const Padding(
-                  padding: EdgeInsets.only(top: AppSpacing.xl),
-                  child: Center(
-                    child: Text('Add entries to see health insights.'),
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xl),
+                  child: _buildMessageState(
+                    context,
+                    icon: Icons.vpn_key_off_outlined,
+                    title: 'No entries yet',
+                    body: 'Add entries to see health insights.',
                   ),
                 ),
             ],
@@ -81,18 +107,28 @@ class _VaultHealthScreenState extends State<VaultHealthScreen> {
   Widget _buildScoreCard(BuildContext context, VaultHealthReport report) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final semanticColors = Theme.of(context).extension<AppSemanticColors>() ??
+        AppTheme.fallbackSemanticColors;
     final score = report.score;
     final ringColor = score >= 80
-        ? Colors.green
+        ? semanticColors.success
         : score >= 60
-            ? Colors.orange
-            : Colors.redAccent;
+            ? semanticColors.warning
+            : semanticColors.destructive;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(AppRadius.large),
+        border: Border.all(color: colorScheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.06),
+            blurRadius: AppElevation.low * 2,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -125,6 +161,7 @@ class _VaultHealthScreenState extends State<VaultHealthScreen> {
                 Text(
                   'Security Score',
                   style: textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -168,13 +205,22 @@ class _VaultHealthScreenState extends State<VaultHealthScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final disabled = bucket.count == 0;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        border: Border.all(
+          color: disabled ? colorScheme.outlineVariant : colorScheme.primary,
+          width: disabled ? 1 : 1.2,
+        ),
+      ),
       child: ListTile(
         title: Text(bucket.title),
         subtitle: Text(bucket.description),
         leading: CircleAvatar(
           backgroundColor: colorScheme.primaryContainer,
+          foregroundColor: colorScheme.onPrimaryContainer,
           child: Text('${bucket.count}'),
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -192,6 +238,69 @@ class _VaultHealthScreenState extends State<VaultHealthScreen> {
       ),
     );
   }
+
+  Widget _buildLoadingState(BuildContext context) {
+    return _buildMessageState(
+      context,
+      icon: Icons.health_and_safety_outlined,
+      title: 'Analyzing vault health',
+      body: 'Checking weak, duplicate, and stale credentials...',
+      trailing: const Padding(
+        padding: EdgeInsets.only(top: AppSpacing.md),
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  Widget _buildMessageState(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String body,
+    Widget? trailing,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(AppRadius.large),
+            border: Border.all(color: colorScheme.outlineVariant),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 32, color: colorScheme.primary),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class VaultHealthIssueListScreen extends StatelessWidget {
@@ -201,17 +310,47 @@ class VaultHealthIssueListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
       appBar: AppBar(title: Text(bucket.title)),
       body: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          AppSpacing.lg,
+        ),
         itemCount: bucket.entries.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (context, index) {
           final entry = bucket.entries[index];
-          return ListTile(
-            leading: const Icon(Icons.vpn_key_rounded),
-            title: Text(entry.title),
-            subtitle: Text(_maskUsername(entry.username)),
+          return Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppRadius.large),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: ListTile(
+              leading: Icon(
+                Icons.vpn_key_rounded,
+                color: colorScheme.primary,
+              ),
+              title: Text(
+                entry.title,
+                style: textTheme.titleSmall?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                _maskUsername(entry.username),
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
           );
         },
       ),
@@ -220,21 +359,21 @@ class VaultHealthIssueListScreen extends StatelessWidget {
 
   String _maskUsername(String username) {
     final normalized = username.trim();
-    if (normalized.isEmpty) return '••••';
+    if (normalized.isEmpty) return '****';
 
     final atIndex = normalized.indexOf('@');
     if (atIndex > 0 && atIndex < normalized.length - 1) {
       final local = normalized.substring(0, atIndex);
       final domain = normalized.substring(atIndex + 1);
       final localMaskLength = local.length > 1 ? local.length - 1 : 1;
-      final localMasked = '${local[0]}${'•' * localMaskLength}';
+      final localMasked = '${local[0]}${'*' * localMaskLength}';
       return '$localMasked@$domain';
     }
 
     if (normalized.length <= 2) {
-      return '•' * normalized.length;
+      return '*' * normalized.length;
     }
-    return '${normalized[0]}${'•' * (normalized.length - 2)}${normalized[normalized.length - 1]}';
+    return '${normalized[0]}${'*' * (normalized.length - 2)}${normalized[normalized.length - 1]}';
   }
 }
 
@@ -260,6 +399,7 @@ class _StatChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(AppRadius.medium),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Column(
         children: [

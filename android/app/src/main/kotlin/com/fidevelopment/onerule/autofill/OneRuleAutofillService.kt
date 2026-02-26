@@ -27,35 +27,41 @@ class OneRuleAutofillService : AutofillService() {
         callback: FillCallback
     ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            callback.onSuccess(FillResponse.Builder().build())
+            returnNoResponse(callback, "Unsupported SDK for Autofill response.")
             return
         }
 
         val context = extractLatestRequestContext(request.fillContexts)
         if (context == null) {
-            Log.d(TAG, "No AssistStructure context available for Autofill request.")
-            callback.onSuccess(FillResponse.Builder().build())
+            returnNoResponse(callback, "No AssistStructure context available for Autofill request.")
             return
         }
 
         if (context.passwordFieldId == null) {
-            Log.d(TAG, "No password field detected; skipping autofill suggestions.")
-            callback.onSuccess(FillResponse.Builder().build())
+            returnNoResponse(callback, "No fillable password field detected; returning null response.")
             return
         }
 
-        val store = AutofillSecureStore(applicationContext)
-        val encryptedCredentials = store.readCredentials()
+        val store: AutofillSecureStore
+        val encryptedCredentials: List<StoredAutofillCredential>
+        val sessionKey: ByteArray?
+        try {
+            store = AutofillSecureStore(applicationContext)
+            encryptedCredentials = store.readCredentials()
+            sessionKey = store.readSessionKeyBytes()
+        } catch (error: Throwable) {
+            Log.w(TAG, "Autofill store unavailable (vault locked/unavailable).", error)
+            callback.onSuccess(null)
+            return
+        }
+
         if (encryptedCredentials.isEmpty()) {
-            Log.d(TAG, "No credential snapshot cached for Autofill.")
-            callback.onSuccess(FillResponse.Builder().build())
+            returnNoResponse(callback, "No credential snapshot cached for Autofill.")
             return
         }
 
-        val sessionKey = store.readSessionKeyBytes()
         if (sessionKey == null) {
-            Log.d(TAG, "Autofill session key unavailable; vault is likely locked.")
-            callback.onSuccess(FillResponse.Builder().build())
+            returnNoResponse(callback, "Autofill session key unavailable; vault is likely locked.")
             return
         }
 
@@ -65,15 +71,15 @@ class OneRuleAutofillService : AutofillService() {
             webDomain = context.webDomain,
         )
         if (ranked.isEmpty()) {
-            Log.d(
-                TAG,
+            returnNoResponse(
+                callback,
                 "No mapped credentials for package=${context.packageName ?: "unknown"} domain=${context.webDomain ?: "unknown"}"
             )
-            callback.onSuccess(FillResponse.Builder().build())
             return
         }
 
         val responseBuilder = FillResponse.Builder()
+        var datasetCount = 0
         try {
             ranked.forEach { encryptedCredential ->
                 val displayName = AutofillEnvelopeCipher.decryptOrThrow(
@@ -97,6 +103,7 @@ class OneRuleAutofillService : AutofillService() {
                     passwordFieldId = context.passwordFieldId,
                 )
                 responseBuilder.addDataset(dataset)
+                datasetCount++
             }
         } catch (tagError: AEADBadTagException) {
             Log.w(TAG, "AES-GCM authentication failed while decrypting autofill data.")
@@ -108,9 +115,14 @@ class OneRuleAutofillService : AutofillService() {
             return
         }
 
+        if (datasetCount == 0) {
+            returnNoResponse(callback, "No datasets produced for Autofill request.")
+            return
+        }
+
         val response = responseBuilder.build()
         callback.onSuccess(response)
-        Log.d(TAG, "Returned ${ranked.size} dataset(s) for Autofill request.")
+        Log.d(TAG, "Returned $datasetCount dataset(s) for Autofill request.")
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
@@ -143,5 +155,10 @@ class OneRuleAutofillService : AutofillService() {
     ): ParsedAutofillRequest? {
         val lastContext = contexts.lastOrNull() ?: return null
         return AutofillStructureParser.parse(lastContext.structure)
+    }
+
+    private fun returnNoResponse(callback: FillCallback, reason: String) {
+        Log.w(TAG, reason)
+        callback.onSuccess(null)
     }
 }

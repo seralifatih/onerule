@@ -75,19 +75,32 @@ class _AutofillSetupScreenState extends State<AutofillSetupScreen>
         AppTheme.fallbackSemanticColors;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Autofill Setup')),
+      appBar: AppBar(
+        leading: Icon(Icons.touch_app_outlined, color: colorScheme.onSurface),
+        title: const Text('Autofill Setup'),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.lg,
+              ),
               children: [
                 Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
                     color: _isEnabled
                         ? semanticColors.success.withValues(alpha: 0.12)
                         : semanticColors.warning.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.medium),
+                    borderRadius: BorderRadius.circular(AppRadius.large),
+                    border: Border.all(
+                      color: _isEnabled
+                          ? semanticColors.success.withValues(alpha: 0.45)
+                          : semanticColors.warning.withValues(alpha: 0.45),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -116,14 +129,34 @@ class _AutofillSetupScreenState extends State<AutofillSetupScreen>
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 if (!_isSupported)
-                  Text(
-                    'This device does not support Android Autofill API 26+ or Autofill is disabled by build config.',
-                    style: textTheme.bodyMedium,
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(AppRadius.large),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: Text(
+                      'This device does not support Android Autofill API 26+ or Autofill is disabled by build config.',
+                      style: textTheme.bodyMedium,
+                    ),
                   )
                 else ...[
-                  Text(
-                    'Use OneRule to fill credentials in apps and browsers.',
-                    style: textTheme.bodyMedium,
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(AppRadius.large),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: Text(
+                      'Use OneRule to fill credentials in apps and browsers.',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _step(
@@ -184,11 +217,14 @@ class _AutofillSetupScreenState extends State<AutofillSetupScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 24,
-            height: 24,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               color: colorScheme.primaryContainer,
               shape: BoxShape.circle,
+              border: Border.all(
+                color: colorScheme.primary.withValues(alpha: 0.2),
+              ),
             ),
             alignment: Alignment.center,
             child: Text(

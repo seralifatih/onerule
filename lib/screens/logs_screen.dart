@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/security_settings_provider.dart';
 import '../services/local_log_service.dart';
+import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 
 class LogsScreen extends StatefulWidget {
@@ -66,6 +67,8 @@ class _LogsScreenState extends State<LogsScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading:
+            Icon(Icons.article_outlined, color: theme.colorScheme.onSurface),
         title: Text(loc.viewLogsTitle),
         actions: [
           IconButton(
@@ -84,21 +87,47 @@ class _LogsScreenState extends State<LogsScreen> {
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(AppSpacing.lg),
-                            child: Text(
-                              loc.viewLogsEmpty,
-                              style: textTheme.bodyMedium,
-                              textAlign: TextAlign.center,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(AppSpacing.lg),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.large),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant,
+                                ),
+                              ),
+                              child: Text(
+                                loc.viewLogsEmpty,
+                                style: textTheme.bodyMedium,
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           ),
                         )
                       : Padding(
                           padding: const EdgeInsets.all(AppSpacing.lg),
-                          child: SingleChildScrollView(
-                            child: SelectableText(
-                              _logs,
-                              style: textTheme.bodySmall?.copyWith(
-                                fontFamily: 'monospace',
-                                height: 1.4,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.35),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.large),
+                              border: Border.all(
+                                color: theme.colorScheme.outlineVariant,
+                              ),
+                            ),
+                            child: SingleChildScrollView(
+                              child: SelectableText(
+                                _logs,
+                                style: textTheme.bodySmall?.copyWith(
+                                  fontFamily: 'monospace',
+                                  height: 1.4,
+                                ),
                               ),
                             ),
                           ),

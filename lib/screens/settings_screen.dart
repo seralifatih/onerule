@@ -38,7 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _autofillSupported = false;
   bool _autofillEnabled = false;
 
-  // ─── Buy Me a Coffee URL ─────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Buy Me a Coffee URL Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   static const _buyMeCoffeeUrl = 'https://buymeacoffee.com/seralifatih';
 
   @override
@@ -80,13 +80,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // ─── Buy Me a Coffee launcher ─────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Buy Me a Coffee launcher Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Future<void> _openBuyMeCoffee() async {
     final uri = Uri.parse(_buyMeCoffeeUrl);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open link')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.openLinkFailed)),
         );
       }
     }
@@ -113,7 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               maxLength: 6,
               obscureText: true,
               decoration: const InputDecoration(
-                hintText: "••••••",
+                hintText: "Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢",
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.lock_outline),
               ),
@@ -176,7 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               maxLength: 6,
               obscureText: true,
               decoration: const InputDecoration(
-                hintText: "••••••",
+                hintText: "Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢",
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.key),
               ),
@@ -291,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     maxLength: 6,
                     obscureText: true,
                     decoration: const InputDecoration(
-                      hintText: "••••••",
+                      hintText: "Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢",
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -532,9 +532,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
         theme.extension<AppSemanticColors>() ?? AppTheme.fallbackSemanticColors;
 
     return Scaffold(
-      appBar: AppBar(title: Text(loc.settings)),
+      appBar: AppBar(
+        leading: Icon(Icons.settings_outlined, color: colorScheme.onSurface),
+        title: Text(loc.settings),
+      ),
       body: ListView(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.sm,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                color:
+                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(AppRadius.large),
+                border: Border.all(color: colorScheme.outlineVariant),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.shield_outlined, color: colorScheme.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      _biometricEnabled
+                          ? 'Security options are active on this device.'
+                          : 'Review security options to harden your vault.',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: AppSpacing.lg + AppSpacing.xs),
 
           // --- LANGUAGE ---
@@ -567,17 +603,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ButtonSegment(
                         value: LanguageMode.en,
                         label: Text(loc.english),
-                        icon: const Text("🇺🇸"),
+                        icon: const Text('\uD83C\uDDFA\uD83C\uDDF8'),
                       ),
                       ButtonSegment(
                         value: LanguageMode.tr,
                         label: Text(loc.turkish),
-                        icon: const Text("🇹🇷"),
+                        icon: const Text('\uD83C\uDDF9\uD83C\uDDF7'),
                       ),
                       const ButtonSegment(
                         value: LanguageMode.de,
                         label: Text("Deutsch"),
-                        icon: Text("🇩🇪"),
+                        icon: Text('\uD83C\uDDE9\uD83C\uDDEA'),
                       ),
                     ],
                     selected: {languageProvider.currentMode},
@@ -698,14 +734,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                       // If the user cancelled or biometric failed, do not flip
                       // the switch. successButRestoreFailed still means the
-                      // hardware prompt succeeded — allow it.
+                      // hardware prompt succeeded Ã¢â‚¬â€ allow it.
                       if (outcome == BiometricUnlockOutcome.failedOrCanceled ||
                           outcome == BiometricUnlockOutcome.unavailable) {
                         return;
                       }
                     }
 
-                    // Disabling needs no prompt — just save and reflect.
+                    // Disabling needs no prompt Ã¢â‚¬â€ just save and reflect.
                     await _authFacade.setBiometricEnabled(val);
                     if (mounted) setState(() => _biometricEnabled = val);
                   }
@@ -807,10 +843,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Icons.health_and_safety_outlined,
               color: colorScheme.secondary,
             ),
-            title: const Text('Vault Health'),
-            subtitle: const Text(
-              'Weak, duplicate, and stale password checks.',
-            ),
+            title: Text(loc.vaultHealthTitle),
+            subtitle: Text(loc.vaultHealthSubtitle),
             trailing: const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
             onTap: () async {
               await Navigator.push(
@@ -844,11 +878,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ? semanticColors.success
                     : colorScheme.onSurfaceVariant,
               ),
-              title: const Text('Autofill'),
+              title: Text(loc.autofillTitle),
               subtitle: Text(
                 _autofillEnabled
-                    ? 'Enabled for OneRule'
-                    : 'Not enabled. Tap to set up.',
+                    ? loc.autofillEnabledSubtitle
+                    : loc.autofillDisabledSubtitle,
               ),
               trailing:
                   const Icon(Icons.arrow_forward_ios, size: AppSpacing.lg),
@@ -901,10 +935,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? colorScheme.secondary
                   : colorScheme.onSurfaceVariant,
             ),
-            title: const Text('Backup reminder'),
-            subtitle: const Text(
-              'Monthly reminder when your last backup is older than 30 days.',
-            ),
+            title: Text(loc.backupReminderTitle),
+            subtitle: Text(loc.backupReminderSubtitle),
             value: securitySettings.backupReminderEnabled,
             onChanged: (enabled) async {
               await securitySettings.setBackupReminderEnabled(enabled);
@@ -1032,9 +1064,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          // ═══════════════════════════════════════════════════════════════════
-          // SUPPORT SECTION — NEW
-          // ═══════════════════════════════════════════════════════════════════
+          // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+          // SUPPORT SECTION Ã¢â‚¬â€ NEW
+          // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
           const Divider(),
 
           Padding(
@@ -1044,7 +1076,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               bottom: AppSpacing.sm,
             ),
             child: Text(
-              'Support Development',
+              loc.supportDevelopmentTitle,
               style: textTheme.labelLarge?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -1052,7 +1084,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           ListTile(
-            // Coffee-yellow tinted icon container — no external asset needed
+            // Coffee-yellow tinted icon container Ã¢â‚¬â€ no external asset needed
             leading: Container(
               width: 40,
               height: 40,
@@ -1065,18 +1097,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               child: const Center(
-                child: Text(
-                  '☕',
-                  style: TextStyle(fontSize: 20),
+                child: Icon(
+                  Icons.coffee_rounded,
+                  size: 20,
                 ),
               ),
             ),
-            title: const Text(
-              'Buy me a coffee',
-              style: TextStyle(fontWeight: FontWeight.w500),
+            title: Text(
+              loc.buyMeCoffeeTitle,
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
             subtitle: Text(
-              'Built by one developer. Your support helps keep OneRule offline and maintained.',
+              loc.supportDevelopmentBody,
               style: textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -1096,14 +1128,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               bottom: AppSpacing.sm,
             ),
             child: Text(
-              'Built by one developer. Your support helps keep OneRule offline and maintained.',
+              loc.supportDevelopmentBody,
               style: textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ),
           ),
 
-          // ═══════════════════════════════════════════════════════════════════
+          // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
           const Divider(),
 
           Padding(

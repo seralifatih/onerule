@@ -1,84 +1,58 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# OS / filesystem
 .DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to include in version control.
-# Keep it commented here if you want to track `.vscode/`.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
-.fvm/
-
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-# Android local config and signing secrets
-/android/local.properties
-**/key.properties
-*.jks
-*.keystore
-
-# Android/Gradle generated or local-only files
-/android/.gradle/
-/android/.kotlin/
-/android/captures/
-/android/build/reports/problems/
-
-# Local crash/replay logs (JVM/Gradle)
-hs_err_pid*.log
-replay_pid*.log
-/android/hs_err_pid*.log
-/android/replay_pid*.log
-
-# Windows Explorer metadata
 Thumbs.db
 Desktop.ini
 
-# Common local backup/conflict/temp artifacts
+# Editor / IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.history
+.atom/
+
+# Generic temp / logs
+*.log
+*.tmp
+*.temp
+*.swp
 *.orig
 *.rej
 *.bak
-*.tmp
-*.temp
+hs_err_pid*.log
+replay_pid*.log
 
-# Environment and secret files
-.env
-.env.*
-!.env.example
+# Dart / Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub/
+.pub-cache/
+.fvm/
+build/
+coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# Flutter symbol / obfuscation artifacts
+app.*.symbols
+app.*.map.json
+
+# Android / Gradle
+android/.gradle/
+android/.kotlin/
+android/captures/
+android/local.properties
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/build/reports/problems/
+
+# Signing / secrets
+**/key.properties
+*.jks
+*.keystore
 *.pem
 *.p12
 *.pfx
@@ -86,12 +60,19 @@ Desktop.ini
 *.crt
 *.der
 
-# Local tooling caches
-# VS Code local workspace settings (machine-specific)
-.vscode/
-.cache/
+# Env files
+.env
+.env.*
+!.env.example
 
-# OneRule local runtime artifacts (sensitive/local-only)
+# OneRule local runtime artifacts
 OneRule_backup_*.enc
 onerule_debug.log
 **/onerule_debug.log
+
+# Misc local build metadata
+*.class
+.build/
+.buildlog/
+.swiftpm/
+migrate_working_dir/

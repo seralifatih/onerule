@@ -234,7 +234,18 @@
     "retry": "Retry",
     "goToLogin": "Go to Login",
     "biometricPrompt": "Verify your identity to sign in",
-    "usePinToFinishUnlocking": "Use PIN to finish unlocking."
+    "usePinToFinishUnlocking": "Use PIN to finish unlocking.",
+    "openLinkFailed": "Could not open link",
+    "vaultHealthTitle": "Vault Health",
+    "vaultHealthSubtitle": "Weak, duplicate, and stale password checks.",
+    "autofillTitle": "Autofill",
+    "autofillEnabledSubtitle": "Enabled for OneRule",
+    "autofillDisabledSubtitle": "Not enabled. Tap to set up.",
+    "backupReminderTitle": "Backup reminder",
+    "backupReminderSubtitle": "Monthly reminder when your last backup is older than 30 days.",
+    "supportDevelopmentTitle": "Support Development",
+    "buyMeCoffeeTitle": "Buy me a coffee",
+    "supportDevelopmentBody": "Built by one developer. Your support helps keep OneRule offline and maintained."
 }
 
 

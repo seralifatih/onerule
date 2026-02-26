@@ -39,46 +39,46 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dataManagement => 'Datenverwaltung';
 
   @override
-  String get backupRestoreTitle => 'Backup & Restore';
+  String get backupRestoreTitle => 'Sichern und Wiederherstellen';
 
   @override
   String get backupRestoreDescription =>
-      'Create encrypted backups and restore from a backup file.';
+      'Erstellen Sie verschlüsselte Backups und stellen Sie aus einer Backup-Datei wieder her.';
 
   @override
-  String get createBackupCta => 'Create Backup';
+  String get createBackupCta => 'Backup erstellen';
 
   @override
-  String get restoreFromBackupCta => 'Restore from Backup';
+  String get restoreFromBackupCta => 'Aus Backup wiederherstellen';
 
   @override
-  String get backupLastUnknown => 'No backup yet';
+  String get backupLastUnknown => 'Noch kein Backup';
 
   @override
-  String get backupGuideTitle => 'Important before you continue';
+  String get backupGuideTitle => 'Wichtig vor dem Fortfahren';
 
   @override
   String get backupGuideStep1 =>
-      'Create backups regularly and store them somewhere safe.';
+      'Erstellen Sie regelmäßig Backups und bewahren Sie sie sicher auf.';
 
   @override
   String get backupGuideStep2 =>
-      'If you lose your PIN, your vault cannot be recovered.';
+      'Wenn Sie Ihre PIN verlieren, kann Ihr Tresor nicht wiederhergestellt werden.';
 
   @override
   String get backupGuideStep3 =>
-      'Keep your backup passphrase separate from your device.';
+      'Bewahren Sie Ihr Backup-Passwort getrennt vom Gerät auf.';
 
   @override
   String get backupGuideStep4 =>
-      'Restoring merges imported items into your current vault.';
+      'Beim Wiederherstellen werden importierte Einträge mit Ihrem aktuellen Tresor zusammengeführt.';
 
   @override
   String get exportDebugLogTitle => 'Debug-Log exportieren';
 
   @override
   String get exportDebugLogWarning =>
-      'Das Log kann Stack-Traces enthalten, aber keine Passwoerter.';
+      'Das Log kann Stack-Traces enthalten, aber keine Passwörter.';
 
   @override
   String get crashReportsSectionTitle => 'Absturzberichte';
@@ -88,7 +88,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get shareCrashReportsSubtitle =>
-      'Wenn aktiviert, koennen Sie lokale Logs manuell exportieren. Es wird nichts automatisch gesendet.';
+      'Wenn aktiviert, können Sie lokale Logs manuell exportieren. Es wird nichts automatisch gesendet.';
 
   @override
   String get shareCrashReportsDisabled =>
@@ -98,7 +98,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get viewLogsTitle => 'Logs anzeigen';
 
   @override
-  String get viewLogsEmpty => 'Noch keine Logs verfuegbar.';
+  String get viewLogsEmpty => 'Noch keine Logs verfügbar.';
 
   @override
   String get copyLogsAction => 'Logs kopieren';
@@ -107,7 +107,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get logsCopied => 'Logs in die Zwischenablage kopiert.';
 
   @override
-  String get debugLogEmpty => 'Noch kein Debug-Log verfuegbar.';
+  String get debugLogEmpty => 'Noch kein Debug-Log verfügbar.';
 
   @override
   String get debugLogExportFailed =>
@@ -333,7 +333,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get panicPinInfoRisk =>
-      'Bei versehentlicher Nutzung koennen Daten als verloren wirken.';
+      'Bei versehentlicher Nutzung können Daten als verloren wirken.';
 
   @override
   String get panicPinConfirmLabel =>
@@ -341,7 +341,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get panicPinConfirmRequired =>
-      'Bitte bestaetigen Sie dies vor dem Speichern.';
+      'Bitte bestätigen Sie dies vor dem Speichern.';
 
   @override
   String get privacyModeHelperText =>
@@ -592,4 +592,41 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get usePinToFinishUnlocking => 'Zum Entsperren bitte PIN verwenden.';
+
+  @override
+  String get openLinkFailed => 'Link konnte nicht geöffnet werden';
+
+  @override
+  String get vaultHealthTitle => 'Tresor-Gesundheit';
+
+  @override
+  String get vaultHealthSubtitle =>
+      'Prüfung auf schwache, doppelte und veraltete Passwörter.';
+
+  @override
+  String get autofillTitle => 'Automatisches Ausfüllen';
+
+  @override
+  String get autofillEnabledSubtitle => 'Für OneRule aktiviert';
+
+  @override
+  String get autofillDisabledSubtitle =>
+      'Nicht aktiviert. Tippen Sie zum Einrichten.';
+
+  @override
+  String get backupReminderTitle => 'Backup-Erinnerung';
+
+  @override
+  String get backupReminderSubtitle =>
+      'Monatliche Erinnerung, wenn Ihr letztes Backup älter als 30 Tage ist.';
+
+  @override
+  String get supportDevelopmentTitle => 'Entwicklung unterstützen';
+
+  @override
+  String get buyMeCoffeeTitle => 'Spendiere mir einen Kaffee';
+
+  @override
+  String get supportDevelopmentBody =>
+      'OneRule wird von einer einzelnen Person entwickelt. Ihre Unterstützung hilft, die App offline und gepflegt zu halten.';
 }

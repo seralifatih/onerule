@@ -39,78 +39,77 @@ class AppLocalizationsTr extends AppLocalizations {
   String get dataManagement => 'Veri Yönetimi';
 
   @override
-  String get backupRestoreTitle => 'Backup & Restore';
+  String get backupRestoreTitle => 'Yedekleme ve Geri Yükleme';
 
   @override
   String get backupRestoreDescription =>
-      'Create encrypted backups and restore from a backup file.';
+      'Şifrelenmiş yedek oluşturun ve bir yedek dosyasından geri yükleyin.';
 
   @override
-  String get createBackupCta => 'Create Backup';
+  String get createBackupCta => 'Yedek Oluştur';
 
   @override
-  String get restoreFromBackupCta => 'Restore from Backup';
+  String get restoreFromBackupCta => 'Yedekten Geri Yükle';
 
   @override
-  String get backupLastUnknown => 'No backup yet';
+  String get backupLastUnknown => 'Henüz yedek yok';
 
   @override
-  String get backupGuideTitle => 'Important before you continue';
+  String get backupGuideTitle => 'Devam etmeden önce önemli';
 
   @override
   String get backupGuideStep1 =>
-      'Create backups regularly and store them somewhere safe.';
+      'Düzenli yedek alın ve güvenli bir yerde saklayın.';
 
   @override
   String get backupGuideStep2 =>
-      'If you lose your PIN, your vault cannot be recovered.';
+      'PIN\'inizi kaybederseniz kasanız kurtarılamaz.';
 
   @override
-  String get backupGuideStep3 =>
-      'Keep your backup passphrase separate from your device.';
+  String get backupGuideStep3 => 'Yedek parolasını cihazınızdan ayrı saklayın.';
 
   @override
   String get backupGuideStep4 =>
-      'Restoring merges imported items into your current vault.';
+      'Geri yükleme, içe aktarılan öğeleri mevcut kasanıza birleştirir.';
 
   @override
-  String get exportDebugLogTitle => 'Hata gunlugunu disa aktar';
+  String get exportDebugLogTitle => 'Hata günlüğünü dışa aktar';
 
   @override
   String get exportDebugLogWarning =>
-      'Gunluk yigin izleri icerebilir ancak sifreler yer almamalidir.';
+      'Günlük yığın izleri içerebilir ancak şifreler yer almamalıdır.';
 
   @override
-  String get crashReportsSectionTitle => 'Cokme raporlari';
+  String get crashReportsSectionTitle => 'Çökme raporları';
 
   @override
-  String get shareCrashReportsTitle => 'Cokme raporlarini paylas';
+  String get shareCrashReportsTitle => 'Çökme raporlarını paylaş';
 
   @override
   String get shareCrashReportsSubtitle =>
-      'Aciksa yerel loglari elle disa aktarabilirsiniz. Raporlar asla otomatik gonderilmez.';
+      'Açıksa yerel logları elle dışa aktarabilirsiniz. Raporlar asla otomatik gönderilmez.';
 
   @override
   String get shareCrashReportsDisabled =>
-      'Log disa aktarmadan once Ayarlar\'dan \"Cokme raporlarini paylas\" secenegini acin.';
+      'Log dışa aktarmadan önce Ayarlar\'dan \"Çökme raporlarını paylaş\" seçeneğini açın.';
 
   @override
-  String get viewLogsTitle => 'Loglari goruntule';
+  String get viewLogsTitle => 'Logları görüntüle';
 
   @override
-  String get viewLogsEmpty => 'Henuz log yok.';
+  String get viewLogsEmpty => 'Henüz log yok.';
 
   @override
-  String get copyLogsAction => 'Loglari kopyala';
+  String get copyLogsAction => 'Logları kopyala';
 
   @override
-  String get logsCopied => 'Loglar panoya kopyalandi.';
+  String get logsCopied => 'Loglar panoya kopyalandı.';
 
   @override
-  String get debugLogEmpty => 'Henuz disa aktarilacak bir hata gunlugu yok.';
+  String get debugLogEmpty => 'Henüz dışa aktarılacak bir hata günlüğü yok.';
 
   @override
-  String get debugLogExportFailed => 'Hata gunlugu disa aktarma basarisiz.';
+  String get debugLogExportFailed => 'Hata günlüğü dışa aktarma başarısız.';
 
   @override
   String get exportPasswords => 'Şifreleri Dışa Aktar';
@@ -316,26 +315,26 @@ class AppLocalizationsTr extends AppLocalizations {
   String get panicPinSet => 'Panik PIN ayarlandı.';
 
   @override
-  String get panicPinInfoTitle => 'Panik PIN\'i etkinlestirmeden once';
+  String get panicPinInfoTitle => 'Panik PIN\'i etkinleştirmeden önce';
 
   @override
   String get panicPinInfoWhatItDoes =>
-      'Panik PIN, alternatif bir acil durum akisina giris yapar.';
+      'Panik PIN, alternatif bir acil durum akışına giriş yapar.';
 
   @override
   String get panicPinInfoDecoyVault =>
-      'Gercek kasaniz yerine bir yem kasa gosterir.';
+      'Gerçek kasanız yerine bir yem kasa gösterir.';
 
   @override
   String get panicPinInfoRisk =>
-      'Yanlislikla kullanirsaniz verileriniz kayip sanilabilir.';
+      'Yanlışlıkla kullanırsanız verileriniz kayıp sanılabilir.';
 
   @override
   String get panicPinConfirmLabel =>
-      'Yem kasa akisinin olusturulacagini anliyorum.';
+      'Yem kasa akışının oluşturulacağını anlıyorum.';
 
   @override
-  String get panicPinConfirmRequired => 'Kaydetmeden once lutfen onaylayin.';
+  String get panicPinConfirmRequired => 'Kaydetmeden önce lütfen onaylayın.';
 
   @override
   String get privacyModeHelperText =>
@@ -495,7 +494,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get legacyImportWarningBody =>
-      'Bu JSON yedeği şifrelenmemiştir. İçe aktarma sırasında şifreleriniz diğer uygulamalara veya servislerine açılabilir. Yalnızca dosyaya ve ortama güveniyorsanız devam edin.';
+      'Bu JSON yedeği şifrelenmemiştir. İçe aktarma sırasında şifreleriniz diğer uygulamalara veya servislere açılabilir. Yalnızca dosyaya ve ortama güveniyorsanız devam edin.';
 
   @override
   String get legacyImportConfirm => 'Yine de içe aktar';
@@ -581,4 +580,40 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get usePinToFinishUnlocking => 'Kilidi tamamlamak için PIN kullanın.';
+
+  @override
+  String get openLinkFailed => 'Bağlantı açılamadı';
+
+  @override
+  String get vaultHealthTitle => 'Kasa Sağlığı';
+
+  @override
+  String get vaultHealthSubtitle =>
+      'Zayıf, tekrar eden ve eski şifre kontrolleri.';
+
+  @override
+  String get autofillTitle => 'Otomatik Doldurma';
+
+  @override
+  String get autofillEnabledSubtitle => 'OneRule için etkin';
+
+  @override
+  String get autofillDisabledSubtitle => 'Etkin değil. Kurmak için dokunun.';
+
+  @override
+  String get backupReminderTitle => 'Yedek hatırlatıcı';
+
+  @override
+  String get backupReminderSubtitle =>
+      'Son yedek 30 günden eskiyse aylık hatırlatma gösterilir.';
+
+  @override
+  String get supportDevelopmentTitle => 'Geliştirmeyi Destekle';
+
+  @override
+  String get buyMeCoffeeTitle => 'Bana bir kahve ısmarla';
+
+  @override
+  String get supportDevelopmentBody =>
+      'OneRule tek bir geliştirici tarafından yapılıyor. Desteğiniz uygulamanın çevrimdışı ve güncel kalmasına yardımcı olur.';
 }

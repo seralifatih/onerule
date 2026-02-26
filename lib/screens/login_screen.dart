@@ -16,6 +16,19 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
 
+// ── Design tokens for the auth gradient surface ───────────────────────────────
+// All text/icons on the dark gradient MUST use these instead of colorScheme.onPrimary,
+// which resolves to dark navy on a cyan primary — invisible on dark backgrounds.
+const _kOnGradient = Colors.white;
+const _kOnGradientMid = Color(0xCCFFFFFF); // 80%
+const _kOnGradientSub = Color(0xA3FFFFFF); // 64%
+const _kOnGradientHint = Color(0x66FFFFFF); // 40%
+const _kOnGradientFaint = Color(0x33FFFFFF); // 20%
+const _kErrorColor = Color(0xFFFF6B6B);
+const _kWarningText = Color(0xFFFFE6BF);
+const _kWarningBorder = Color(0x73F59E0B);
+const _kWarningBg = Color(0x24F59E0B);
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.authFacade});
 
@@ -71,9 +84,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (_pinController.text.length == _pinLength && !_isFirstTime) {
         _submit();
       }
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) setState(() {});
     });
 
     _checkStatus();
@@ -87,6 +98,8 @@ class _LoginScreenState extends State<LoginScreen>
     _shakeController.dispose();
     super.dispose();
   }
+
+  // ── Auth logic (unchanged) ──────────────────────────────────────────────────
 
   Future<void> _checkStatus() async {
     final hasPin = await _authFacade.hasMasterPin();
@@ -170,9 +183,7 @@ class _LoginScreenState extends State<LoginScreen>
       localizedReason: localizedReason,
     );
 
-    if (kDebugMode) {
-      debugPrint('[Login] biometricResult=${outcome.name}');
-    }
+    if (kDebugMode) debugPrint('[Login] biometricResult=${outcome.name}');
     if (!mounted) return;
 
     if (outcome == BiometricUnlockOutcome.success) {
@@ -225,9 +236,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (_onboardingStep == 2) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _pinFocusNode.requestFocus();
-        }
+        if (mounted) _pinFocusNode.requestFocus();
       });
     }
   }
@@ -235,14 +244,10 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _submitFirstTimePin() async {
     final input = _pinController.text;
     if (input.length < _minPinLength) {
-      setState(() {
-        _errorMessage = 'PIN must be at least 4 digits';
-      });
+      setState(() => _errorMessage = 'PIN must be at least 4 digits');
       return;
     }
-    if (!_pinAcknowledged || _isAuthenticating) {
-      return;
-    }
+    if (!_pinAcknowledged || _isAuthenticating) return;
 
     final provider = context.read<PasswordProvider>();
     final biometricEnabled = await _authFacade.isBiometricEnabled();
@@ -288,9 +293,7 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _setPanicPinNow() async {
     final panicPin = _panicPinController.text;
     if (panicPin.length < _minPinLength || _isAuthenticating) {
-      setState(() {
-        _errorMessage = 'PIN must be at least 4 digits';
-      });
+      setState(() => _errorMessage = 'PIN must be at least 4 digits');
       return;
     }
 
@@ -351,6 +354,8 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  // ── Build ───────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -364,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen>
         end: Alignment.bottomRight,
         colors: [
           semanticColors.authGradientStart,
-          semanticColors.authGradientEnd
+          semanticColors.authGradientEnd,
         ],
       ),
     );
@@ -374,7 +379,7 @@ class _LoginScreenState extends State<LoginScreen>
         body: Container(
           decoration: gradient,
           child: const Center(
-            child: CircularProgressIndicator(color: Colors.white),
+            child: CircularProgressIndicator(color: _kOnGradient),
           ),
         ),
       );
@@ -406,6 +411,8 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  // ── Onboarding router ───────────────────────────────────────────────────────
+
   Widget _buildOnboardingView(ColorScheme colorScheme, TextTheme textTheme) {
     switch (_onboardingStep) {
       case 0:
@@ -421,6 +428,8 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  // ── Step 0: Welcome ─────────────────────────────────────────────────────────
+
   Widget _buildWelcomeStep(ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       children: [
@@ -430,7 +439,7 @@ class _LoginScreenState extends State<LoginScreen>
           'Welcome to OneRule',
           textAlign: TextAlign.center,
           style: textTheme.headlineMedium?.copyWith(
-            color: colorScheme.onPrimary,
+            color: _kOnGradient,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -439,13 +448,12 @@ class _LoginScreenState extends State<LoginScreen>
           'Your offline vault with panic mode protection.',
           textAlign: TextAlign.center,
           style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onPrimary.withValues(alpha: 0.75),
+            color: _kOnGradientSub,
             height: 1.5,
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
         _buildInfoCard(
-          colorScheme: colorScheme,
           textTheme: textTheme,
           icon: Icons.lock_person_rounded,
           title: 'Offline vault',
@@ -454,7 +462,6 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         const SizedBox(height: AppSpacing.sm),
         _buildInfoCard(
-          colorScheme: colorScheme,
           textTheme: textTheme,
           icon: Icons.warning_amber_rounded,
           title: 'Panic mode',
@@ -462,39 +469,28 @@ class _LoginScreenState extends State<LoginScreen>
               'A separate panic PIN can open a decoy flow when you need plausible deniability.',
         ),
         const SizedBox(height: AppSpacing.xl),
-        SizedBox(
-          width: double.infinity,
-          height: AppSpacing.giant + AppSpacing.lg - 1,
-          child: FilledButton(
-            onPressed: () => _goToOnboardingStep(1),
-            style: FilledButton.styleFrom(
-              elevation: AppElevation.high,
-              shadowColor: colorScheme.primary.withValues(alpha: 0.4),
-            ),
-            child: Text(
-              'Continue',
-              style: textTheme.labelLarge?.copyWith(letterSpacing: 0.3),
-            ),
-          ),
+        _buildPrimaryButton(
+          textTheme: textTheme,
+          colorScheme: colorScheme,
+          label: 'Continue',
+          onPressed: () => _goToOnboardingStep(1),
         ),
       ],
     );
   }
 
+  // ── Step 1: Security ────────────────────────────────────────────────────────
+
   Widget _buildSecurityStep(ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       children: [
-        Icon(
-          Icons.shield_outlined,
-          size: 64,
-          color: colorScheme.onPrimary,
-        ),
+        const Icon(Icons.shield_outlined, size: 64, color: _kOnGradient),
         const SizedBox(height: AppSpacing.lg),
         Text(
           'Security basics',
           textAlign: TextAlign.center,
           style: textTheme.headlineSmall?.copyWith(
-            color: colorScheme.onPrimary,
+            color: _kOnGradient,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -503,79 +499,57 @@ class _LoginScreenState extends State<LoginScreen>
           'No cloud. No accounts. Your encryption keys stay local.',
           textAlign: TextAlign.center,
           style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onPrimary.withValues(alpha: 0.75),
+            color: _kOnGradientSub,
             height: 1.5,
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
         _buildInfoCard(
-          colorScheme: colorScheme,
           textTheme: textTheme,
           icon: Icons.cloud_off_rounded,
           title: 'No cloud sync',
           body:
-              'OneRule does not upload your vault by default. Data at rest is local-only.',
+              'OneRule does not upload your vault. Data at rest is local-only.',
         ),
         const SizedBox(height: AppSpacing.sm),
         _buildInfoCard(
-          colorScheme: colorScheme,
           textTheme: textTheme,
           icon: Icons.account_circle_outlined,
           title: 'No account system',
           body:
-              'There is no account login or password reset service in the app flow.',
+              'There is no account login or password reset service in the app.',
         ),
         const SizedBox(height: AppSpacing.sm),
         _buildInfoCard(
-          colorScheme: colorScheme,
           textTheme: textTheme,
           icon: Icons.enhanced_encryption_rounded,
           title: 'Encrypted vault',
           body:
-              'Your PIN derives the key that unlocks the local SQLCipher vault and field encryption.',
+              'Your PIN derives the key that unlocks the SQLCipher vault and field encryption.',
         ),
         const SizedBox(height: AppSpacing.xl),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => _goToOnboardingStep(0),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                    color: colorScheme.onPrimary.withValues(alpha: 0.45),
-                  ),
-                  foregroundColor: colorScheme.onPrimary,
-                ),
-                child: const Text('Back'),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: FilledButton(
-                onPressed: () => _goToOnboardingStep(2),
-                child: const Text('Continue'),
-              ),
-            ),
-          ],
+        _buildNavRow(
+          textTheme: textTheme,
+          colorScheme: colorScheme,
+          onBack: () => _goToOnboardingStep(0),
+          onContinue: () => _goToOnboardingStep(2),
         ),
       ],
     );
   }
 
+  // ── Step 2: PIN setup ───────────────────────────────────────────────────────
+
   Widget _buildPinSetupStep(ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       children: [
-        Icon(
-          Icons.key_rounded,
-          size: 64,
-          color: colorScheme.onPrimary,
-        ),
+        const Icon(Icons.key_rounded, size: 64, color: _kOnGradient),
         const SizedBox(height: AppSpacing.lg),
         Text(
           'Set your Master PIN',
           textAlign: TextAlign.center,
           style: textTheme.headlineSmall?.copyWith(
-            color: colorScheme.onPrimary,
+            color: _kOnGradient,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -583,9 +557,7 @@ class _LoginScreenState extends State<LoginScreen>
         Text(
           'Use at least 4 digits. 6 digits is recommended.',
           textAlign: TextAlign.center,
-          style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onPrimary.withValues(alpha: 0.75),
-          ),
+          style: textTheme.bodyMedium?.copyWith(color: _kOnGradientSub),
         ),
         const SizedBox(height: AppSpacing.lg),
         _buildPinBoxes(colorScheme),
@@ -598,7 +570,7 @@ class _LoginScreenState extends State<LoginScreen>
                     _errorMessage,
                     textAlign: TextAlign.center,
                     style: textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFFFF6B6B),
+                      color: _kErrorColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -606,217 +578,244 @@ class _LoginScreenState extends State<LoginScreen>
               : const SizedBox(height: 0),
         ),
         const SizedBox(height: AppSpacing.lg),
+
+        // Warning card
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+            color: _kWarningBg,
             borderRadius: BorderRadius.circular(AppRadius.medium),
-            border: Border.all(
-              color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
-              width: 1,
-            ),
+            border: Border.all(color: _kWarningBorder, width: 1),
           ),
-          child: Text(
-            'If you forget this PIN, your data cannot be recovered by anyone, including the developer. Write it down.',
-            style: textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFFFFE6BF),
-              fontWeight: FontWeight.w700,
-              height: 1.45,
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        CheckboxListTile(
-          value: _pinAcknowledged,
-          onChanged: (value) {
-            setState(() {
-              _pinAcknowledged = value ?? false;
-            });
-          },
-          controlAffinity: ListTileControlAffinity.leading,
-          contentPadding: EdgeInsets.zero,
-          activeColor: colorScheme.onPrimary,
-          checkColor: colorScheme.primary,
-          title: Text(
-            'I understand',
-            style: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed:
-                    _isAuthenticating ? null : () => _goToOnboardingStep(1),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                    color: colorScheme.onPrimary.withValues(alpha: 0.45),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 1),
+                child: Icon(Icons.warning_amber_rounded,
+                    size: 16, color: Color(0xFFF59E0B)),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'If you forget this PIN, your data cannot be recovered by anyone — including the developer. Write it down.',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: _kWarningText,
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
                   ),
-                  foregroundColor: colorScheme.onPrimary,
                 ),
-                child: const Text('Back'),
               ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: AppSpacing.md),
+
+        // Acknowledgment checkbox
+        InkWell(
+          onTap: () => setState(() => _pinAcknowledged = !_pinAcknowledged),
+          borderRadius: BorderRadius.circular(AppRadius.small),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.xs, horizontal: 2),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
+                    color: _pinAcknowledged ? _kOnGradient : _kOnGradientFaint,
+                    border: Border.all(
+                      color: _pinAcknowledged ? _kOnGradient : _kOnGradientHint,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: _pinAcknowledged
+                      ? Icon(Icons.check_rounded,
+                          size: 14, color: colorScheme.primary)
+                      : null,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    'I understand — if I forget my PIN, my vault cannot be recovered.',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: _kOnGradientMid,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: FilledButton(
-                onPressed: _pinController.text.length >= _minPinLength &&
-                        _pinAcknowledged &&
-                        !_isAuthenticating
-                    ? _submitFirstTimePin
-                    : null,
-                child: _isAuthenticating
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Continue'),
-              ),
-            ),
-          ],
+          ),
+        ),
+
+        const SizedBox(height: AppSpacing.lg),
+        _buildNavRow(
+          textTheme: textTheme,
+          colorScheme: colorScheme,
+          onBack: _isAuthenticating ? null : () => _goToOnboardingStep(1),
+          onContinue: _pinController.text.length >= _minPinLength &&
+                  _pinAcknowledged &&
+                  !_isAuthenticating
+              ? _submitFirstTimePin
+              : null,
+          continueLabel: 'Continue',
+          isLoading: _isAuthenticating,
         ),
       ],
     );
   }
 
+  // ── Step 3: Panic Mode ──────────────────────────────────────────────────────
+
   Widget _buildPanicModeStep(ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       children: [
-        Icon(
-          Icons.visibility_off_rounded,
-          size: 64,
-          color: colorScheme.onPrimary,
-        ),
+        const Icon(Icons.visibility_off_rounded, size: 64, color: _kOnGradient),
         const SizedBox(height: AppSpacing.lg),
         Text(
           'Panic Mode',
           textAlign: TextAlign.center,
           style: textTheme.headlineSmall?.copyWith(
-            color: colorScheme.onPrimary,
+            color: _kOnGradient,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'Set an optional decoy PIN. If someone forces a login, you can open a harmless decoy flow.',
+          'Set an optional decoy PIN. If someone forces a login, enter it to open a harmless decoy vault instead.',
           textAlign: TextAlign.center,
           style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onPrimary.withValues(alpha: 0.78),
+            color: _kOnGradientSub,
             height: 1.5,
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
         _buildInfoCard(
-          colorScheme: colorScheme,
           textTheme: textTheme,
           icon: Icons.tips_and_updates_outlined,
           title: 'How it works',
           body:
-              'Use a different PIN than your real one. Real PIN opens your vault; decoy PIN opens panic mode.',
+              'Use a different PIN than your real one. Real PIN → your vault. Decoy PIN → panic mode.',
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'You can set or change this later in Settings > Panic PIN.',
+          'You can set or change this later in Settings → Panic PIN.',
           textAlign: TextAlign.center,
-          style: textTheme.bodySmall?.copyWith(
-            color: colorScheme.onPrimary.withValues(alpha: 0.72),
-          ),
+          style: textTheme.bodySmall?.copyWith(color: _kOnGradientSub),
         ),
         const SizedBox(height: AppSpacing.xl),
         if (_showPanicPinSetup) ...[
+          // Panic PIN field
           TextField(
             controller: _panicPinController,
             keyboardType: TextInputType.number,
             maxLength: _pinLength,
             obscureText: true,
+            autofocus: true,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: const TextStyle(color: _kOnGradient, letterSpacing: 4),
+            cursorColor: _kOnGradient,
             decoration: InputDecoration(
               counterText: '',
               hintText: 'Enter decoy PIN',
+              hintStyle: const TextStyle(color: _kOnGradientHint),
               filled: true,
-              fillColor: colorScheme.onPrimary.withValues(alpha: 0.12),
-              border: OutlineInputBorder(
+              fillColor: _kOnGradientFaint,
+              enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadius.medium),
-                borderSide: BorderSide(
-                  color: colorScheme.onPrimary.withValues(alpha: 0.25),
-                ),
+                borderSide: const BorderSide(color: _kOnGradientHint, width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.medium),
+                borderSide:
+                    const BorderSide(color: _kOnGradientMid, width: 1.5),
               ),
             ),
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: AppSpacing.md),
-          if (_errorMessage.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: Text(
-                _errorMessage,
-                textAlign: TextAlign.center,
-                style: textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFFFF6B6B),
-                  fontWeight: FontWeight.w600,
-                ),
+          if (_errorMessage.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: textTheme.bodySmall?.copyWith(
+                color: _kErrorColor,
+                fontWeight: FontWeight.w600,
               ),
             ),
+          ],
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
+            height: 52,
             child: FilledButton(
               onPressed: _panicPinController.text.length >= _minPinLength &&
                       !_isAuthenticating
                   ? _setPanicPinNow
                   : null,
+              style: FilledButton.styleFrom(
+                elevation: AppElevation.high,
+                shadowColor: colorScheme.primary.withValues(alpha: 0.4),
+              ),
               child: _isAuthenticating
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: _kOnGradient),
                     )
-                  : const Text('Save and Continue'),
+                  : Text('Save and Continue', style: textTheme.labelLarge),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextButton(
             onPressed: _isAuthenticating
                 ? null
-                : () {
-                    setState(() {
+                : () => setState(() {
                       _showPanicPinSetup = false;
                       _panicPinController.clear();
                       _errorMessage = '';
-                    });
-                  },
+                    }),
+            style: TextButton.styleFrom(foregroundColor: _kOnGradientSub),
             child: const Text('Back'),
           ),
         ] else ...[
           Row(
             children: [
               Expanded(
-                child: FilledButton(
-                  onPressed: () {
-                    setState(() {
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: () => setState(() {
                       _showPanicPinSetup = true;
                       _errorMessage = '';
-                    });
-                  },
-                  child: const Text('Set up now'),
+                    }),
+                    style: FilledButton.styleFrom(
+                      elevation: AppElevation.high,
+                      shadowColor: colorScheme.primary.withValues(alpha: 0.4),
+                    ),
+                    child: const Text('Set up now'),
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: OutlinedButton(
-                  onPressed: _goToHome,
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                      color: colorScheme.onPrimary.withValues(alpha: 0.45),
+                child: SizedBox(
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: _goToHome,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: _kOnGradientHint),
+                      foregroundColor: _kOnGradientSub,
                     ),
-                    foregroundColor: colorScheme.onPrimary,
+                    child: const Text('Skip'),
                   ),
-                  child: const Text('Skip'),
                 ),
               ),
             ],
@@ -825,6 +824,8 @@ class _LoginScreenState extends State<LoginScreen>
       ],
     );
   }
+
+  // ── Return-visit unlock view ────────────────────────────────────────────────
 
   Widget _buildMainView(ColorScheme colorScheme, TextTheme textTheme) {
     final loc = AppLocalizations.of(context)!;
@@ -837,7 +838,7 @@ class _LoginScreenState extends State<LoginScreen>
         Text(
           loc.appTitle,
           style: textTheme.headlineMedium?.copyWith(
-            color: colorScheme.onPrimary,
+            color: _kOnGradient,
             fontWeight: FontWeight.bold,
             letterSpacing: -0.5,
           ),
@@ -847,7 +848,7 @@ class _LoginScreenState extends State<LoginScreen>
           loc.enterPinToDecrypt,
           textAlign: TextAlign.center,
           style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onPrimary.withValues(alpha: 0.65),
+            color: _kOnGradientSub,
             height: 1.5,
           ),
         ),
@@ -857,9 +858,7 @@ class _LoginScreenState extends State<LoginScreen>
             Text(
               _pinInfoMessage,
               textAlign: TextAlign.center,
-              style: textTheme.bodySmall?.copyWith(
-                color: colorScheme.onPrimary.withValues(alpha: 0.7),
-              ),
+              style: textTheme.bodySmall?.copyWith(color: _kOnGradientMid),
             ),
             const SizedBox(height: AppSpacing.md),
           ],
@@ -873,7 +872,7 @@ class _LoginScreenState extends State<LoginScreen>
                       _errorMessage,
                       textAlign: TextAlign.center,
                       style: textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFFFF6B6B),
+                        color: _kErrorColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -883,16 +882,17 @@ class _LoginScreenState extends State<LoginScreen>
         ] else if (_biometricInProgress) ...[
           _buildBiometricWaiting(loc, colorScheme, textTheme),
         ],
-        if (_showPinEntry && _isBiometricEnabled) ...[
+        if (_showPinEntry && _isBiometricEnabled)
           _buildBiometricShortcut(loc, colorScheme, textTheme),
-        ],
         const SizedBox(height: AppSpacing.xl),
       ],
     );
   }
 
+  // ── Shared sub-widgets ──────────────────────────────────────────────────────
+
+  /// Info card used throughout onboarding steps.
   Widget _buildInfoCard({
-    required ColorScheme colorScheme,
     required TextTheme textTheme,
     required IconData icon,
     required String title,
@@ -902,21 +902,14 @@ class _LoginScreenState extends State<LoginScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: colorScheme.onPrimary.withValues(alpha: 0.07),
+        color: _kOnGradientFaint,
         borderRadius: BorderRadius.circular(AppRadius.medium),
-        border: Border.all(
-          color: colorScheme.onPrimary.withValues(alpha: 0.12),
-          width: 1,
-        ),
+        border: Border.all(color: _kOnGradientHint, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 18,
-            color: colorScheme.onPrimary.withValues(alpha: 0.7),
-          ),
+          Icon(icon, size: 18, color: _kOnGradientSub),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -925,7 +918,7 @@ class _LoginScreenState extends State<LoginScreen>
                 Text(
                   title,
                   style: textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onPrimary,
+                    color: _kOnGradient,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -933,7 +926,7 @@ class _LoginScreenState extends State<LoginScreen>
                 Text(
                   body,
                   style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onPrimary.withValues(alpha: 0.75),
+                    color: _kOnGradientSub,
                     height: 1.5,
                   ),
                 ),
@@ -942,6 +935,77 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ],
       ),
+    );
+  }
+
+  /// Full-width primary button.
+  Widget _buildPrimaryButton({
+    required TextTheme textTheme,
+    required ColorScheme colorScheme,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          elevation: AppElevation.high,
+          shadowColor: colorScheme.primary.withValues(alpha: 0.4),
+        ),
+        child: Text(label, style: textTheme.labelLarge),
+      ),
+    );
+  }
+
+  /// Back + Continue row used in steps 1 and 2.
+  Widget _buildNavRow({
+    required TextTheme textTheme,
+    required ColorScheme colorScheme,
+    VoidCallback? onBack,
+    VoidCallback? onContinue,
+    String continueLabel = 'Continue',
+    bool isLoading = false,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 52,
+            child: OutlinedButton(
+              onPressed: onBack,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: _kOnGradientHint),
+                foregroundColor: _kOnGradientSub,
+              ),
+              child: const Text('Back'),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: SizedBox(
+            height: 52,
+            child: FilledButton(
+              onPressed: onContinue,
+              style: FilledButton.styleFrom(
+                elevation: AppElevation.high,
+                shadowColor: colorScheme.primary.withValues(alpha: 0.4),
+                disabledBackgroundColor: _kOnGradientFaint,
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: _kOnGradient),
+                    )
+                  : Text(continueLabel, style: textTheme.labelLarge),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -998,10 +1062,7 @@ class _LoginScreenState extends State<LoginScreen>
             : 8.0 *
                 (0.5 - (_shakeAnimation.value - 0.5).abs()) *
                 (_shakeAnimation.value < 0.5 ? 1 : -1);
-        return Transform.translate(
-          offset: Offset(dx * 4, 0),
-          child: child,
-        );
+        return Transform.translate(offset: Offset(dx * 4, 0), child: child);
       },
       child: Stack(
         alignment: Alignment.center,
@@ -1026,15 +1087,13 @@ class _LoginScreenState extends State<LoginScreen>
                   height: 24,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: colorScheme.onPrimary.withValues(
-                      alpha: isFilled ? 0.18 : 0.08,
-                    ),
+                    color: isFilled ? _kOnGradientHint : _kOnGradientFaint,
                     border: Border.all(
                       color: isActive
-                          ? colorScheme.onPrimary.withValues(alpha: 0.86)
+                          ? _kOnGradient
                           : isFilled
-                              ? colorScheme.onPrimary.withValues(alpha: 0.5)
-                              : colorScheme.onPrimary.withValues(alpha: 0.25),
+                              ? _kOnGradientMid
+                              : _kOnGradientHint,
                       width: isActive ? 1.8 : 1.2,
                     ),
                   ),
@@ -1046,9 +1105,9 @@ class _LoginScreenState extends State<LoginScreen>
                       child: Container(
                         width: 9,
                         height: 9,
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: colorScheme.onPrimary.withValues(alpha: 0.94),
+                          color: _kOnGradient,
                         ),
                       ),
                     ),
@@ -1057,6 +1116,7 @@ class _LoginScreenState extends State<LoginScreen>
               );
             }),
           ),
+          // Invisible input capture
           Opacity(
             opacity: 0,
             child: TextField(
@@ -1084,22 +1144,18 @@ class _LoginScreenState extends State<LoginScreen>
         const SizedBox(
           width: 48,
           height: 48,
-          child: CircularProgressIndicator(
-            color: Colors.white,
-            strokeWidth: 2.5,
-          ),
+          child:
+              CircularProgressIndicator(color: _kOnGradient, strokeWidth: 2.5),
         ),
         const SizedBox(height: AppSpacing.lg),
         Text(
           'Waiting for biometric...',
-          style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onPrimary.withValues(alpha: 0.7),
-          ),
+          style: textTheme.bodyMedium?.copyWith(color: _kOnGradientMid),
         ),
         const SizedBox(height: AppSpacing.lg),
         TextButton(
           onPressed: _usePinInstead,
-          style: TextButton.styleFrom(foregroundColor: colorScheme.onPrimary),
+          style: TextButton.styleFrom(foregroundColor: _kOnGradientSub),
           child: Text(loc.enterPin),
         ),
       ],
@@ -1128,18 +1184,13 @@ class _LoginScreenState extends State<LoginScreen>
                 shadowColor: colorScheme.primary.withValues(alpha: 0.35),
               ),
               icon: const Icon(Icons.fingerprint_rounded, size: 22),
-              label: Text(
-                loc.tapToUseBiometrics,
-                style: textTheme.labelLarge,
-              ),
+              label: Text(loc.tapToUseBiometrics, style: textTheme.labelLarge),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Biometric unlock is available on this device',
-            style: textTheme.bodySmall?.copyWith(
-              color: colorScheme.onPrimary.withValues(alpha: 0.55),
-            ),
+            style: textTheme.bodySmall?.copyWith(color: _kOnGradientHint),
           ),
         ],
       ),
