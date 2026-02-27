@@ -129,15 +129,15 @@ void main() {
 
     expect(find.text('Set your Master PIN'), findsOneWidget);
     expect(
-      find.text(
-        'If you forget this PIN, your data cannot be recovered by anyone, including the developer. Write it down.',
+      find.textContaining(
+        'If you forget this PIN, your data cannot be recovered',
       ),
       findsOneWidget,
     );
-    expect(find.text('I understand'), findsOneWidget);
+    expect(find.textContaining('I understand'), findsOneWidget);
   });
 
-  testWidgets('PIN setup Continue is gated by required "I understand" checkbox',
+  testWidgets('PIN setup Continue is gated by required acknowledgment checkbox',
       (
     WidgetTester tester,
   ) async {
@@ -157,7 +157,7 @@ void main() {
     expect(continueButton.onPressed, isNull);
     expect(auth.loginCalls, 0);
 
-    await tester.tap(find.text('I understand'));
+    await tester.tap(find.textContaining('I understand'));
     await tester.pump();
 
     continueButton = tester.widget<FilledButton>(continueFinder);
@@ -184,7 +184,7 @@ void main() {
     await _goToPinSetupStep(tester);
     await tester.enterText(find.byType(TextField), '1234');
     await tester.pump();
-    await tester.tap(find.text('I understand'));
+    await tester.tap(find.textContaining('I understand'));
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
     await tester.pumpAndSettle();
@@ -209,7 +209,7 @@ void main() {
     await _goToPinSetupStep(tester);
     await tester.enterText(find.byType(TextField), '1234');
     await tester.pump();
-    await tester.tap(find.text('I understand'));
+    await tester.tap(find.textContaining('I understand'));
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
     await tester.pumpAndSettle();

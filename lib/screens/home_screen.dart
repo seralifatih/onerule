@@ -54,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final RecentlyUsedService _recentlyUsedService = RecentlyUsedService();
   bool _hideRecentlyUsed = false;
   List<String> _recentlyUsedIds = const <String>[];
+  late final List<PasswordModel> _decoyPasswords = _buildDecoyPasswords();
 
   @override
   void initState() {
@@ -188,7 +189,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Consumer<PasswordProvider>(
         builder: (context, provider, _) {
-          final passwords = _buildVisiblePasswords(provider.passwords);
+          final sourcePasswords =
+              provider.isPanicMode ? _decoyPasswords : provider.passwords;
+          final passwords = _buildVisiblePasswords(sourcePasswords);
           final hasActiveRefinement =
               _searchQuery.isNotEmpty || provider.hasActiveCategoryFilter;
           final contentState = _resolveContentState(
@@ -251,25 +254,30 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
-      floatingActionButton: SafeArea(
-        minimum: const EdgeInsets.only(bottom: AppSpacing.sm),
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            _analytics.primaryCtaTap(
-              ctaId: 'home_new_password',
-              screen: 'home',
-            );
-            _openAddEditSheet(context, null);
-          },
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          elevation: AppElevation.medium,
-          label: Text(
-            loc.newPassword,
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          icon: const Icon(Icons.add_rounded, size: 20),
-        ),
+      floatingActionButton: Consumer<PasswordProvider>(
+        builder: (context, provider, _) {
+          if (provider.isPanicMode) return const SizedBox.shrink();
+          return SafeArea(
+            minimum: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: FloatingActionButton.extended(
+              onPressed: () {
+                _analytics.primaryCtaTap(
+                  ctaId: 'home_new_password',
+                  screen: 'home',
+                );
+                _openAddEditSheet(context, null);
+              },
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              elevation: AppElevation.medium,
+              label: Text(
+                loc.newPassword,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              icon: const Icon(Icons.add_rounded, size: 20),
+            ),
+          );
+        },
       ),
     );
   }
@@ -277,27 +285,26 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Panic mode ACTIVE banner ──────────────────────────────────────────────
 
   Widget _buildPanicActiveBanner(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final semanticColors = Theme.of(context).extension<AppSemanticColors>() ??
-        AppTheme.fallbackSemanticColors;
 
     return Container(
       width: double.infinity,
-      color: semanticColors.warning.withValues(alpha: 0.22),
+      color: colorScheme.secondaryContainer.withValues(alpha: 0.75),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.sm,
       ),
       child: Row(
         children: [
-          Icon(Icons.shield_rounded, size: 16, color: semanticColors.warning),
+          Icon(Icons.privacy_tip_rounded, size: 16, color: colorScheme.primary),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'Privacy mode active — decoy vault shown',
+              '${loc.privacyModeLabel}: ${loc.privacyModeHelperText}',
               style: textTheme.labelSmall?.copyWith(
-                // FIX: use warning color directly for text on warning bg
-                color: semanticColors.warning,
+                color: colorScheme.onSecondaryContainer,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -700,6 +707,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return const LoadingState();
       case _HomeContentState.emptyVault:
         return EmptyVaultState(
+          isPanicMode: provider.isPanicMode,
           onAddItem: () {
             _analytics.primaryCtaTap(
               ctaId: 'home_empty_add_item',
@@ -887,6 +895,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final clampedScale =
         media.textScaler.scale(1.0).clamp(1.0, 1.15).toDouble();
 
+    final isReadOnlyDecoy = provider.isPanicMode;
     final countdownSeconds = _copyCountdownById[password.id];
     return MediaQuery(
       data: media.copyWith(textScaler: TextScaler.linear(clampedScale)),
@@ -896,24 +905,94 @@ class _HomeScreenState extends State<HomeScreen> {
         maskedUsername: _maskUsername(password.username),
         countdownSeconds: countdownSeconds,
         semanticColors: semanticColors,
-        onOpen: () => _openPasswordDetails(context, password),
-        onCopyUsername: () => _copyUsernameFromCard(password),
-        onCopyPassword: () => _copyPasswordFromCard(password),
-        onQuickCopyPassword: () => _copyPasswordFromCard(password),
-        onEdit: () => _openPasswordDetails(context, password),
+        onOpen: isReadOnlyDecoy
+            ? () => _showPrivacyModeReadOnlyMessage(context)
+            : () => _openPasswordDetails(context, password),
+        onCopyUsername: isReadOnlyDecoy
+            ? () => _showPrivacyModeReadOnlyMessage(context)
+            : () => _copyUsernameFromCard(password),
+        onCopyPassword: isReadOnlyDecoy
+            ? () => _showPrivacyModeReadOnlyMessage(context)
+            : () => _copyPasswordFromCard(password),
+        onQuickCopyPassword: isReadOnlyDecoy
+            ? () => _showPrivacyModeReadOnlyMessage(context)
+            : () => _copyPasswordFromCard(password),
+        onEdit: isReadOnlyDecoy
+            ? () => _showPrivacyModeReadOnlyMessage(context)
+            : () => _openPasswordDetails(context, password),
         onDeleteTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Hold Delete to confirm.')),
-          );
+          if (isReadOnlyDecoy) {
+            _showPrivacyModeReadOnlyMessage(context);
+            return;
+          }
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(
+              const SnackBar(content: Text('Hold Delete to confirm.')));
         },
-        onDeleteHold: () => _deletePasswordWithHold(
-          context: context,
-          provider: provider,
-          password: password,
-          loc: loc,
-        ),
+        onDeleteHold: isReadOnlyDecoy
+            ? () => _showPrivacyModeReadOnlyMessage(context)
+            : () => _deletePasswordWithHold(
+                  context: context,
+                  provider: provider,
+                  password: password,
+                  loc: loc,
+                ),
       ),
     );
+  }
+
+  void _showPrivacyModeReadOnlyMessage(BuildContext context) {
+    final loc = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(loc.privacyModeHelperText)),
+    );
+  }
+
+  List<PasswordModel> _buildDecoyPasswords() {
+    final now = DateTime.now();
+    return <PasswordModel>[
+      PasswordModel(
+        id: 'decoy-1',
+        title: 'MailHub',
+        username: 'alex.m@protonmail.com',
+        password: 'tT6!fQ2#vR9',
+        category: PasswordCategories.work,
+        createdDate: now.subtract(const Duration(days: 12)),
+      ),
+      PasswordModel(
+        id: 'decoy-2',
+        title: 'StreamBox',
+        username: 'alex_media',
+        password: 'W9!pL3#sK2@x',
+        category: PasswordCategories.social,
+        createdDate: now.subtract(const Duration(days: 19)),
+      ),
+      PasswordModel(
+        id: 'decoy-3',
+        title: 'NorthBank',
+        username: 'alex.wallet',
+        password: 'B8@qN4!yZ1%u',
+        category: PasswordCategories.finance,
+        createdDate: now.subtract(const Duration(days: 33)),
+      ),
+      PasswordModel(
+        id: 'decoy-4',
+        title: 'QuickCart',
+        username: 'alex.buy',
+        password: 'M2#dV7!kR5^p',
+        category: PasswordCategories.shopping,
+        createdDate: now.subtract(const Duration(days: 45)),
+      ),
+      PasswordModel(
+        id: 'decoy-5',
+        title: 'ForumSpace',
+        username: 'amember84',
+        password: 'R4!xH8@jT6\$w',
+        category: PasswordCategories.other,
+        createdDate: now.subtract(const Duration(days: 61)),
+      ),
+    ];
   }
 
   Future<void> _deletePasswordWithHold({
@@ -1398,9 +1477,14 @@ class LoadingState extends StatelessWidget {
 }
 
 class EmptyVaultState extends StatelessWidget {
-  const EmptyVaultState({super.key, required this.onAddItem});
+  const EmptyVaultState({
+    super.key,
+    required this.onAddItem,
+    this.isPanicMode = false,
+  });
 
   final VoidCallback onAddItem;
+  final bool isPanicMode;
 
   @override
   Widget build(BuildContext context) {
@@ -1443,7 +1527,7 @@ class EmptyVaultState extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     Text(
-                      loc.noPasswordsFound,
+                      isPanicMode ? loc.privacyModeLabel : loc.noPasswordsFound,
                       textAlign: TextAlign.center,
                       style: textTheme.titleLarge?.copyWith(
                         color: colorScheme.onSurface,
@@ -1453,29 +1537,33 @@ class EmptyVaultState extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      'Your vault is encrypted and ready.\nAdd your first item to get started.',
+                      isPanicMode
+                          ? loc.privacyModeHelperText
+                          : 'Your vault is encrypted and ready.\nAdd your first item to get started.',
                       textAlign: TextAlign.center,
                       style: textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                         height: 1.55,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.xl),
-                    FilledButton.icon(
-                      onPressed: onAddItem,
-                      icon: const Icon(Icons.add_rounded, size: 20),
-                      label: const Text('Add First Item'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xl,
-                          vertical: AppSpacing.md + AppSpacing.xs / 2,
-                        ),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
+                    if (!isPanicMode) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      FilledButton.icon(
+                        onPressed: onAddItem,
+                        icon: const Icon(Icons.add_rounded, size: 20),
+                        label: const Text('Add First Item'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xl,
+                            vertical: AppSpacing.md + AppSpacing.xs / 2,
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: AppSpacing.xl + AppSpacing.lg),
                     // FIX: updated hint to match actual swipe behavior
                     // (swipe left reveals actions, not direct delete)

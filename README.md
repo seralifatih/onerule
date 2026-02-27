@@ -99,6 +99,17 @@ Privacy-conscious users can build OneRule locally and verify behavior themselves
    flutter build apk --release
    ```
 
+### Deterministic Android Release Validation (Windows)
+
+To avoid mixed Flutter artifacts and startup crashes on device, run:
+
+```powershell
+.\scripts\android-release-validate.ps1
+```
+
+Full checklist and fallback commands:
+- [docs/android-release-checklist.md](docs/android-release-checklist.md)
+
 ---
 
 ## 🧰 Tech Stack

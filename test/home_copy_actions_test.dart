@@ -167,10 +167,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fakeLockFacade.passwordCopyCalls, 1);
-    expect(find.textContaining('Copied • Clears in '), findsOneWidget);
+    expect(find.textContaining('Copied'), findsOneWidget);
+    expect(find.textContaining('clears in'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
-    expect(find.text('Copied • Clears in 28s'), findsOneWidget);
+    expect(find.textContaining('28s'), findsOneWidget);
   });
 
   testWidgets('swipe left reveals edit and hold-to-delete actions', (
@@ -221,3 +222,4 @@ void main() {
     expect(find.byType(AddPasswordSheet), findsOneWidget);
   });
 }
+

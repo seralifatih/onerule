@@ -163,7 +163,7 @@ void main() {
     await tester.tap(deleteButton);
     await tester.pumpAndSettle();
 
-    await tester.pageBack();
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
     expect(find.text('No passwords found.'), findsOneWidget);

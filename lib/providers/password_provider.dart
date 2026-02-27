@@ -51,7 +51,10 @@ class PasswordProvider extends ChangeNotifier {
 
   void enterPanicMode() {
     _isPanicMode = true;
+    _isLoading = false;
     _passwords.clear();
+    _selectedCategory = 'All';
+    _searchQuery = '';
     unawaited(_credentialProvider.onVaultLocked());
     _notifySafely();
   }
