@@ -1,1 +1,1 @@
-100% offline password manager with AES-256 encryption and Panic Mode.
+Offline password manager with SQLCipher encrypted storage and Panic Mode

@@ -1,28 +1,25 @@
-OneRule is a 100% offline, open-source password manager. Your passwords never leave your device.
+OneRule is an open-source offline password manager.
 
-<b>Zero Cloud. Zero Tracking. Zero Compromise.</b>
+All data is stored locally on your device in an encrypted database powered by SQLCipher (AES-256). No account is required and no internet connection is needed.
 
-All data is stored locally and encrypted with AES-256. No account required, no internet permission, no analytics sent anywhere.
+Features
 
-<b>Features</b>
+• Encrypted local database (SQLCipher, AES-256)
+• Master PIN with optional biometric unlock
+• Panic Mode (secondary PIN opens a separate decoy vault)
+• Encrypted backup export and import
+• Category filtering and search
+• Multi-language support
+• Dark and light theme
 
-• AES-256 encrypted vault — your data is unreadable without your PIN
-• Master PIN with optional biometric unlock (fingerprint / face)
-• Panic Mode — set a secondary PIN that opens a decoy vault if you are forced to unlock
-• Encrypted backup export and import — take your vault anywhere
-• Category filtering and full-text search
-• Multi-language support: English, Turkish, German
-• Dark mode and light mode
-• No ads. No tracking. No cloud. Ever.
+Panic Mode
 
-<b>Panic Mode</b>
+A secondary PIN can be configured to open a separate decoy vault with harmless entries. This is intended for situations where you may be forced to unlock your device.
 
-OneRule includes a unique Panic Mode feature. You can configure a secondary "Panic PIN" that, when entered instead of your real PIN, opens a completely separate decoy vault containing harmless dummy entries. This is designed for situations where you may be coerced into unlocking your device.
+Privacy
 
-<b>Privacy</b>
+OneRule does not use analytics, tracking, or advertising libraries. All data remains on the device. The source code is publicly available under the GPL-3.0 license.
 
-OneRule has no internet permission. It cannot send any data anywhere. The source code is fully open on GitHub under the GPL-3.0 license — you can verify every claim yourself.
+Important
 
-<b>Important</b>
-
-Your PIN is the only key to your vault. If you forget your PIN, your data cannot be recovered by anyone, including the developer. Please store your PIN somewhere safe.
+Your PIN is required to access your data. If it is forgotten, the encrypted data cannot be recovered.
