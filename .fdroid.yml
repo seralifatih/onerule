@@ -13,9 +13,9 @@ RepoType: git
 Repo: https://github.com/seralifatih/OneRule.git
 
 Builds:
-  - versionName: 2.0.1
-    versionCode: 11
-    commit: 2.0.1
+  - versionName: 2.0.2
+    versionCode: 12
+    commit: 2.0.2
     output: build/app/outputs/flutter-apk/app-release.apk
     srclibs:
       - flutter@3.27.1
@@ -33,5 +33,5 @@ Builds:
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
 UpdateCheckData: pubspec.yaml|version:\s.+\+(\d+)|.|version:\s(.+)\+
-CurrentVersion: 2.0.1
-CurrentVersionCode: 11
+CurrentVersion: 2.0.2
+CurrentVersionCode: 12
