@@ -8,7 +8,6 @@ IssueTracker: https://github.com/seralifatih/OneRule/issues
 Changelog: https://github.com/seralifatih/OneRule/releases
 
 AutoName: OneRule
-
 RepoType: git
 Repo: https://github.com/seralifatih/OneRule.git
 
@@ -18,24 +17,19 @@ Builds:
     commit: 6c1bddb5331c53466783f89ebe907512e436642d
     output: build/app/outputs/flutter-apk/app-release.apk
     srclibs:
-      - flutter@3.38.7
+      - flutter@3.27.1
     rm:
       - ios
       - linux
       - macos
       - web
       - windows
-    prebuild:
-      - echo "flutter.sdk=$$flutter$$" > android/local.properties
-      - export PUB_CACHE=$(pwd)/.pub-cache
-      - $$flutter$$/bin/flutter config --no-analytics
-      - $$flutter$$/bin/flutter pub get
+    prebuild: echo "flutter.sdk=$$flutter$$" > android/local.properties &&
+      $$flutter$$/bin/flutter config --no-analytics &&
+      $$flutter$$/bin/flutter pub get
     scandelete:
       - .pub-cache
-    build:
-      - export PUB_CACHE=$(pwd)/.pub-cache
-      - $$flutter$$/bin/flutter config --no-analytics
-      - $$flutter$$/bin/flutter build apk --release
+    build: $$flutter$$/bin/flutter build apk --release --no-pub
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
