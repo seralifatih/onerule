@@ -111,20 +111,48 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
 class AppTheme {
   const AppTheme._();
 
+  // ── Obsidian dark palette ──────────────────────────────────────────────────
+  static const Color _darkBackground = Color(0xFF060E20);
+  static const Color _darkSurface = Color(0xFF060E20);
+  static const Color _darkSurfaceContainer = Color(0xFF0F1930);
+  static const Color _darkSurfaceContainerLow = Color(0xFF091328);
+  static const Color _darkSurfaceContainerHigh = Color(0xFF141F38);
+  static const Color _darkSurfaceContainerHighest = Color(0xFF192540);
+  static const Color _darkPrimary = Color(0xFF5EB4FF);
+  static const Color _darkOnPrimary = Color(0xFF003151);
+  static const Color _darkPrimaryContainer = Color(0xFF2AA7FF);
+  static const Color _darkOnPrimaryContainer = Color(0xFF00253F);
+  static const Color _darkSecondary = Color(0xFFC8D8F3);
+  static const Color _darkOnSecondary = Color(0xFF3C4C61);
+  static const Color _darkSecondaryContainer = Color(0xFF38485D);
+  static const Color _darkOnSecondaryContainer = Color(0xFFC1D1EB);
+  static const Color _darkTertiary = Color(0xFFAF88FF);
+  static const Color _darkOnTertiary = Color(0xFF2B0065);
+  static const Color _darkTertiaryContainer = Color(0xFF8342F4);
+  static const Color _darkOnTertiaryContainer = Color(0xFFFFFFFF);
+  static const Color _darkError = Color(0xFFFF716C);
+  static const Color _darkOnError = Color(0xFF490006);
+  static const Color _darkErrorContainer = Color(0xFF9F0519);
+  static const Color _darkOnErrorContainer = Color(0xFFFFA8A3);
+  static const Color _darkOnSurface = Color(0xFFDEE5FF);
+  static const Color _darkOnSurfaceVariant = Color(0xFFA3AAC4);
+  static const Color _darkOutline = Color(0xFF6D758C);
+  static const Color _darkOutlineVariant = Color(0xFF40485D);
+
   static const AppColorTokens fallbackColorTokens = AppColorTokens(
-    scaffoldNavy: Color(0xFF0C1A2B),
-    cardSlate: Color(0xFF16273A),
-    accentCyan: Color(0xFF22D3EE),
-    subtleBorder: Color(0x333B82F6),
-    metadataText: Color(0xFF93A4B8),
+    scaffoldNavy: _darkBackground,
+    cardSlate: _darkSurfaceContainer,
+    accentCyan: _darkPrimary,
+    subtleBorder: Color(0x4040485D),
+    metadataText: _darkOnSurfaceVariant,
   );
 
   static const AppSemanticColors fallbackSemanticColors = AppSemanticColors(
-    authGradientStart: Color(0xFF0F172A),
-    authGradientEnd: Color(0xFF123547),
-    destructive: Color(0xFFDC2626),
-    success: Color(0xFF16A34A),
-    warning: Color(0xFFF59E0B),
+    authGradientStart: Color(0xFF060E20),
+    authGradientEnd: Color(0xFF0F1930),
+    destructive: Color(0xFFFF716C),
+    success: Color(0xFF22C55E),
+    warning: Color(0xFFFBBF24),
   );
 
   static ThemeData light() {
@@ -138,13 +166,22 @@ class AppTheme {
 
     final scheme = ColorScheme.light(
       primary: tokens.accentCyan,
+      onPrimary: Colors.white,
+      primaryContainer: const Color(0xFFCCF0F8),
+      onPrimaryContainer: const Color(0xFF003151),
       secondary: const Color(0xFF0EA5E9),
+      onSecondary: Colors.white,
+      secondaryContainer: const Color(0xFFD9F3FA),
+      onSecondaryContainer: const Color(0xFF003151),
+      tertiary: const Color(0xFF7C3AED),
+      onTertiary: Colors.white,
+      tertiaryContainer: const Color(0xFFEDE9FE),
+      onTertiaryContainer: const Color(0xFF2B0065),
       surface: tokens.cardSlate,
       onSurface: const Color(0xFF0F172A),
-      onPrimary: Colors.white,
+      onSurfaceVariant: const Color(0xFF526173),
+      outline: const Color(0xFF94A3B8),
       outlineVariant: const Color(0x260F172A),
-      primaryContainer: const Color(0xFFCCF0F8),
-      secondaryContainer: const Color(0xFFD9F3FA),
     );
 
     return _buildTheme(
@@ -165,37 +202,58 @@ class AppTheme {
 
   static ThemeData dark() {
     const tokens = AppColorTokens(
-      scaffoldNavy: Color(0xFF081220),
-      cardSlate: Color(0xFF14273A),
-      accentCyan: Color(0xFF22D3EE),
-      subtleBorder: Color(0x337DD3FC),
-      metadataText: Color(0xFF91A9C3),
+      scaffoldNavy: _darkBackground,
+      cardSlate: _darkSurfaceContainer,
+      accentCyan: _darkPrimary,
+      subtleBorder: Color(0x4040485D),
+      metadataText: _darkOnSurfaceVariant,
     );
 
-    final scheme = ColorScheme.dark(
-      primary: tokens.accentCyan,
-      secondary: const Color(0xFF67E8F9),
-      surface: tokens.cardSlate,
-      onSurface: const Color(0xFFE6EDF6),
-      onPrimary: const Color(0xFF03222D),
-      outlineVariant: const Color(0x337DD3FC),
-      primaryContainer: const Color(0xFF12435B),
-      secondaryContainer: const Color(0xFF0F364A),
+    const scheme = ColorScheme.dark(
+      primary: _darkPrimary,
+      onPrimary: _darkOnPrimary,
+      primaryContainer: _darkPrimaryContainer,
+      onPrimaryContainer: _darkOnPrimaryContainer,
+      secondary: _darkSecondary,
+      onSecondary: _darkOnSecondary,
+      secondaryContainer: _darkSecondaryContainer,
+      onSecondaryContainer: _darkOnSecondaryContainer,
+      tertiary: _darkTertiary,
+      onTertiary: _darkOnTertiary,
+      tertiaryContainer: _darkTertiaryContainer,
+      onTertiaryContainer: _darkOnTertiaryContainer,
+      error: _darkError,
+      onError: _darkOnError,
+      errorContainer: _darkErrorContainer,
+      onErrorContainer: _darkOnErrorContainer,
+      surface: _darkSurface,
+      onSurface: _darkOnSurface,
+      onSurfaceVariant: _darkOnSurfaceVariant,
+      outline: _darkOutline,
+      outlineVariant: _darkOutlineVariant,
+      surfaceContainerHighest: _darkSurfaceContainerHighest,
+      surfaceContainerHigh: _darkSurfaceContainerHigh,
+      surfaceContainer: _darkSurfaceContainer,
+      surfaceContainerLow: _darkSurfaceContainerLow,
+      surfaceTint: _darkPrimary,
+      inverseSurface: Color(0xFFFAF8FF),
+      onInverseSurface: Color(0xFF4D556B),
+      inversePrimary: Color(0xFF00639E),
     );
 
     return _buildTheme(
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: tokens.scaffoldNavy,
+      scaffoldBackgroundColor: _darkBackground,
       colorScheme: scheme,
       colorTokens: tokens,
       semanticColors: const AppSemanticColors(
-        authGradientStart: Color(0xFF081220),
-        authGradientEnd: Color(0xFF123547),
-        destructive: Color(0xFFEF4444),
+        authGradientStart: _darkBackground,
+        authGradientEnd: _darkSurfaceContainerLow,
+        destructive: _darkError,
         success: Color(0xFF22C55E),
         warning: Color(0xFFFBBF24),
       ),
-      appBarTitleColor: Colors.white,
+      appBarTitleColor: _darkPrimary,
     );
   }
 
@@ -217,12 +275,13 @@ class AppTheme {
     return base.copyWith(
       textTheme: AppTypography.textTheme(base.textTheme),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: scaffoldBackgroundColor,
         elevation: AppElevation.none,
-        centerTitle: true,
-        titleTextStyle: base.textTheme.titleLarge?.copyWith(
+        centerTitle: false,
+        titleTextStyle: AppTypography.textTheme(base.textTheme).titleLarge?.copyWith(
           color: appBarTitleColor,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
         ),
         iconTheme: IconThemeData(color: appBarTitleColor),
       ),
@@ -233,14 +292,22 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorTokens.cardSlate,
+        fillColor: colorScheme.surfaceContainerLow,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.medium),
-          borderSide: BorderSide(color: colorTokens.subtleBorder),
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.medium),
-          borderSide: BorderSide(color: colorTokens.accentCyan, width: 1.7),
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          borderSide: BorderSide(color: colorTokens.accentCyan, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
         ),
       ),
       listTileTheme: ListTileThemeData(
@@ -248,27 +315,32 @@ class AppTheme {
         textColor: colorScheme.onSurface,
       ),
       cardTheme: CardThemeData(
-        color: colorTokens.cardSlate,
+        color: colorScheme.surfaceContainer,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.large),
-          side: BorderSide(color: colorTokens.subtleBorder),
+          borderRadius: BorderRadius.circular(AppRadius.xlarge),
         ),
         margin: EdgeInsets.zero,
-        elevation: AppElevation.low,
+        elevation: AppElevation.none,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: colorTokens.accentCyan,
           foregroundColor: colorScheme.onPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.large),
+          ),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: colorTokens.cardSlate,
+        backgroundColor: colorScheme.surfaceContainerHigh,
         contentTextStyle: base.textTheme.bodyMedium?.copyWith(
           color: colorScheme.onSurface,
         ),
         actionTextColor: colorTokens.accentCyan,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.large),
+        ),
       ),
       extensions: <ThemeExtension<dynamic>>[
         colorTokens,

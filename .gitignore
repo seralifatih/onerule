@@ -11,6 +11,7 @@ Desktop.ini
 .vscode/
 .history
 .atom/
+settings.local.json
 
 # Generic temp / logs
 *.log
