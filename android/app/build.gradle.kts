@@ -85,6 +85,11 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
 
+configurations.all {
+    exclude(group = "com.google.android.play", module = "core")
+    exclude(group = "com.google.android.play", module = "core-common")
+}
+
 flutter {
     source = "../.."
 }
