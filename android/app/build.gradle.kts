@@ -1,5 +1,8 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 val autofillMvpEnabled = (project.findProperty("oneruleAutofillMvpEnabled") as String?)
     ?.toBooleanStrictOrNull() ?: true
@@ -87,6 +90,54 @@ dependencies {
 
 configurations.all {
     exclude(group = "com.google.android.play")
+}
+
+val stripPlayStoreFromFlutterEmbedding by tasks.registering {
+    doLast {
+        val gradleHome = gradle.gradleUserHomeDir
+        val embeddingDir = file("${gradleHome}/caches/modules-2/files-2.1/io.flutter/flutter_embedding_release")
+        if (!embeddingDir.exists()) {
+            println("Flutter embedding cache not found at $embeddingDir, skipping strip")
+            return@doLast
+        }
+        val jars = embeddingDir.walkTopDown()
+            .filter { it.isFile && it.name.startsWith("flutter_embedding_release-") && it.name.endsWith(".jar") }
+            .toList()
+        jars.forEach { jar ->
+            val tmp = file("${jar}.tmp")
+            var stripped = 0
+            ZipInputStream(jar.inputStream()).use { zin ->
+                ZipOutputStream(tmp.outputStream()).use { zout ->
+                    var entry = zin.nextEntry
+                    while (entry != null) {
+                        val drop = entry.name.startsWith("io/flutter/embedding/engine/deferredcomponents/PlayStoreDeferredComponentManager") ||
+                                   entry.name == "io/flutter/embedding/android/FlutterPlayStoreSplitApplication.class"
+                        if (!drop) {
+                            zout.putNextEntry(ZipEntry(entry.name))
+                            zin.copyTo(zout)
+                            zout.closeEntry()
+                        } else {
+                            stripped++
+                        }
+                        entry = zin.nextEntry
+                    }
+                }
+            }
+            if (stripped > 0) {
+                jar.delete()
+                tmp.renameTo(jar)
+                println("Stripped $stripped Play Store class(es) from $jar")
+            } else {
+                tmp.delete()
+            }
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+        dependsOn(stripPlayStoreFromFlutterEmbedding)
+    }
 }
 
 flutter {
