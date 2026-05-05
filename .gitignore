@@ -70,6 +70,7 @@ android/build/reports/problems/
 OneRule_backup_*.enc
 onerule_debug.log
 **/onerule_debug.log
+docs/devto-onerule-article.md
 
 # Misc local build metadata
 *.class
@@ -77,3 +78,6 @@ onerule_debug.log
 .buildlog/
 .swiftpm/
 migrate_working_dir/
+
+# Local tooling
+tmp/*.jar
