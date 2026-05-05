@@ -2,15 +2,15 @@ Categories:
   - Security
 License: GPL-3.0-only
 AuthorName: Fatih İlhan
-WebSite: https://github.com/seralifatih/OneRule
-SourceCode: https://github.com/seralifatih/OneRule
-IssueTracker: https://github.com/seralifatih/OneRule/issues
-Changelog: https://github.com/seralifatih/OneRule/releases
+WebSite: https://github.com/seralifatih/onerule
+SourceCode: https://github.com/seralifatih/onerule
+IssueTracker: https://github.com/seralifatih/onerule/issues
+Changelog: https://github.com/seralifatih/onerule/releases
 
 AutoName: OneRule
 
 RepoType: git
-Repo: https://github.com/seralifatih/OneRule.git
+Repo: https://github.com/seralifatih/onerule.git
 
 Builds:
   - versionName: 2.0.3
