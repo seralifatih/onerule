@@ -1,0 +1,10 @@
+Initial F-Droid release.
+
+- 100% offline AES-256 encrypted vault (SQLCipher)
+- Master PIN with optional biometric unlock
+- Panic Mode with separate decoy vault
+- Encrypted backup export and import
+- Category filtering and full-text search
+- English, Turkish, and German language support
+- Dark and light theme
+- No analytics, no tracking, no internet permission

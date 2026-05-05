@@ -1,0 +1,10 @@
+Erstveröffentlichung auf F-Droid.
+
+- 100% offline AES-256 verschlüsselter Tresor (SQLCipher)
+- Master-PIN mit optionaler biometrischer Entsperrung
+- Panik-Modus mit separatem Köder-Tresor
+- Verschlüsseltes Backup: Export und Import
+- Kategoriefilterung und Volltextsuche
+- Deutsch, Englisch und Türkisch
+- Dunkel- und Hellmodus
+- Keine Analyse, kein Tracking, keine Internetberechtigung

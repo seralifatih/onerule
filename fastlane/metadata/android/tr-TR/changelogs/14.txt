@@ -1,0 +1,10 @@
+F-Droid'de ilk sürüm.
+
+- %100 çevrimdışı, AES-256 ile şifreli kasa (SQLCipher)
+- İsteğe bağlı biyometrik kilit açma destekli ana PIN
+- Panik Modu: ayrı bir sahte kasa açan ikinci PIN
+- Şifreli yedek dışa ve içe aktarma
+- Kategori filtreleme ve tam metin arama
+- Türkçe, İngilizce ve Almanca dil desteği
+- Karanlık ve açık tema
+- Analitik yok, takip yok, internet izni yok
