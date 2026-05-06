@@ -92,64 +92,35 @@ configurations.all {
     exclude(group = "com.google.android.play")
 }
 
-fun stripPlayStoreCoreFromJar(jar: File) {
-    val tmp = File("${jar}.tmp")
-    var stripped = 0
-    ZipInputStream(jar.inputStream()).use { zin ->
-        ZipOutputStream(tmp.outputStream()).use { zout ->
-            var entry = zin.nextEntry
-            while (entry != null) {
-                val drop = entry.name.startsWith("io/flutter/embedding/engine/deferredcomponents/PlayStoreDeferredComponentManager") ||
-                           entry.name == "io/flutter/embedding/android/FlutterPlayStoreSplitApplication.class"
-                if (!drop) {
-                    zout.putNextEntry(ZipEntry(entry.name))
-                    zin.copyTo(zout)
-                    zout.closeEntry()
-                } else {
-                    stripped++
-                }
-                entry = zin.nextEntry
-            }
-        }
-    }
-    if (stripped > 0) {
-        jar.delete()
-        tmp.renameTo(jar)
-        println("Stripped $stripped Play Store class(es) from $jar")
-    } else {
-        tmp.delete()
-        println("No Play Store classes found in $jar (already stripped or different version)")
-    }
-}
-
-val stripPlayStoreFromFlutterEmbedding by tasks.registering {
-    doLast {
-        // Try both gradle.gradleUserHomeDir and GRADLE_USER_HOME env (F-Droid sets the latter)
-        val gradleHomes = listOfNotNull(
-            gradle.gradleUserHomeDir,
-            System.getenv("GRADLE_USER_HOME")?.let { file(it) }
-        ).distinct()
-
-        println("Searching for flutter_embedding_release in: $gradleHomes")
-
-        gradleHomes.forEach { gradleHome ->
-            val embeddingDir = file("${gradleHome}/caches/modules-2/files-2.1/io.flutter/flutter_embedding_release")
-            println("Checking $embeddingDir (exists=${embeddingDir.exists()})")
-            if (embeddingDir.exists()) {
-                embeddingDir.walkTopDown()
-                    .filter { it.isFile && it.name.startsWith("flutter_embedding_release-") && it.name.endsWith(".jar") }
-                    .forEach { stripPlayStoreCoreFromJar(it) }
-            }
-        }
-    }
-}
-
 afterEvaluate {
-    tasks.matching { it.name == "preReleaseBuild" }.configureEach {
-        dependsOn(stripPlayStoreFromFlutterEmbedding)
-    }
-    tasks.matching { it.name == "assembleRelease" }.configureEach {
-        dependsOn(stripPlayStoreFromFlutterEmbedding)
+    tasks.matching { it.name == "dexBuilderRelease" }.configureEach {
+        doFirst {
+            val gradleHome = gradle.gradleUserHomeDir
+            val transforms = File(gradleHome, "caches").walkTopDown()
+                .filter { it.isFile && it.name.startsWith("jetified-flutter_embedding_release") && it.name.endsWith(".jar") }
+                .toList()
+            transforms.forEach { jar ->
+                val tmp = File("${jar}.tmp")
+                var stripped = 0
+                ZipInputStream(jar.inputStream()).use { zin ->
+                    ZipOutputStream(tmp.outputStream()).use { zout ->
+                        var entry = zin.nextEntry
+                        while (entry != null) {
+                            val drop = entry.name.startsWith("io/flutter/embedding/engine/deferredcomponents/PlayStoreDeferredComponentManager") ||
+                                       entry.name == "io/flutter/embedding/android/FlutterPlayStoreSplitApplication.class"
+                            if (!drop) {
+                                zout.putNextEntry(ZipEntry(entry.name))
+                                zin.copyTo(zout)
+                                zout.closeEntry()
+                            } else { stripped++ }
+                            entry = zin.nextEntry
+                        }
+                    }
+                }
+                if (stripped > 0) { jar.delete(); tmp.renameTo(jar); println("Stripped $stripped class(es) from ${jar.name}") }
+                else tmp.delete()
+            }
+        }
     }
 }
 

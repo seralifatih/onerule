@@ -28,9 +28,6 @@ Builds:
       - echo "flutter.sdk=$$flutter$$" > android/local.properties
       - $$flutter$$/bin/flutter config --no-analytics
       - $$flutter$$/bin/flutter pub get
-      - find $GRADLE_USER_HOME/caches/modules-2/files-2.1/io.flutter/flutter_embedding_release
-        -name "flutter_embedding_release-*.jar" -exec zip -d {} "io/flutter/embedding/engine/deferredcomponents/PlayStoreDeferredComponentManager*.class"
-        "io/flutter/embedding/android/FlutterPlayStoreSplitApplication.class" \; 2>&1 || true
     build: $$flutter$$/bin/flutter build apk --release --no-pub
 
 AutoUpdateMode: Version
