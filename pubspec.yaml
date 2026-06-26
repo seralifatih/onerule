@@ -11,7 +11,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   # --- Database ---
-  sqflite_sqlcipher: ^3.4.0
+  sqflite_sqlcipher: ^2.0.0
   sqflite_common_ffi: ^2.3.6
   # --- Security ---
   flutter_secure_storage: ^9.0.0
