@@ -1,0 +1,21 @@
+name: DocDrifter
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: seralifatih/docdrifter/action@master
+        with:
+          deepseek-api-key: ${{ secrets.DEEPSEEK_API_KEY }}
+          src-path: "lib/"
+          docs-path: "docs/"
+          repo-description: "OneRule, an offline-first Android/Flutter password manager using AES-256 and SQLCipher"

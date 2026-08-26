@@ -121,6 +121,14 @@ class FieldCipherService {
     return detectPayloadKind(value) == FieldCipherPayloadKind.gcmEnvelopeV2;
   }
 
+  /// Returns `true` for any envelope kind this service can still decrypt,
+  /// including legacy formats kept around for migration. Callers that only
+  /// care about "can I hand this to [decrypt]" should use this instead of
+  /// [isCurrentEnvelope], which is strictly about the canonical v2 format.
+  bool isDecryptable(String value) {
+    return detectPayloadKind(value) != FieldCipherPayloadKind.plaintext;
+  }
+
   Future<String> _decryptGcmEnvelope(
     String encoded,
     List<int> sessionKey,
