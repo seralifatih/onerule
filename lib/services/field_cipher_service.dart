@@ -1,3 +1,4 @@
+// DocDrifter v1-release smoke test: no behavior change.
 import 'dart:convert';
 import 'dart:math';
 import 'package:cryptography/cryptography.dart';
