@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: seralifatih/docdrifter/action@master
+      - uses: seralifatih/docdrifter@v1
         with:
           src-path: "lib/"
           docs-path: "docs/"
